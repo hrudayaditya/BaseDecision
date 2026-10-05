@@ -1,6 +1,4 @@
-"""Laya architecture excerpt, Apache-2.0. Extracted for standalone inference.
-See THIRD_PARTY_NOTICES.md. Forward computation retained.
-"""
+"""The BaseDecision network: an encoder backbone and a typed decision head. Inference only."""
 from typing import Any
 
 import torch

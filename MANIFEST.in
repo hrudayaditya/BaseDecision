@@ -1,4 +1,4 @@
-include LICENSE THIRD_PARTY_NOTICES.md README.md BENCHMARKS.md SECURITY.md CHANGELOG.md
+include LICENSE README.md BENCHMARKS.md SECURITY.md CHANGELOG.md
 recursive-include examples *.py
 recursive-include tests *.py *.json
 

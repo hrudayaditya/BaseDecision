@@ -14,6 +14,11 @@
 
 ## Changed
 
+- The network's module header no longer describes it as an excerpt of another project, and no packaging file
+  refers to the third-party-notices file that does not exist, so building the wheel and the sdist prints no
+  missing-file warnings. Docstring-only change to a hash-pinned module: its syntax tree is identical, 120
+  real-model predictions remain bit-identical to the original baseline, and the `sdk_contract` hash was
+  refreshed. (`_cpu_attention.py` still credits the Transformers code it was adapted from.)
 - Package metadata for PyPI: the license is the SPDX expression `Apache-2.0` (instead of the license text
   pasted into the `License` field; needs setuptools 77 or newer to build), `[project.urls]` (homepage, source,
   issues, documentation, changelog), classifiers for Python 3.10 to 3.14 and typed code, and keywords. Every

@@ -9,7 +9,7 @@ description = "Native typed decisions with complete-input packing and bounded ba
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
-license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
+license-files = ["LICENSE"]
 authors = [{name = "Hrudayaditya Jallu"}]
 keywords = ["classification", "decision-model", "modernbert", "nlp", "structured-output"]
 classifiers = [
