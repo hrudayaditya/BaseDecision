@@ -242,6 +242,11 @@ class ProviderDecision:
             self._payload(request)  # Validate the entire batch before spending on API calls.
         return [self.predict(request) for request in requests]
 
+    @property
+    def closed(self) -> bool:
+        """Whether :meth:`close` has been called; a closed backend cannot send requests."""
+        return self._closed
+
     def close(self) -> None:
         """Release the HTTP client. Safe to call more than once; later calls raise ``InputError``."""
         if not self._closed:

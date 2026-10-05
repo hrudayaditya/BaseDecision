@@ -5,9 +5,11 @@ import hashlib
 import json
 import math
 from pathlib import Path
-from typing import Any, NoReturn, TypedDict
+from typing import Any, NoReturn, TypedDict, TypeVar
 from .client import BaseDecision
 from .types import InputError, Option, Request, Result, options_from
+
+_T = TypeVar('_T', bound='CalibratedDecision')
 
 class CalibrationError(InputError):
     """Unsupported scope, incompatible inference contract, or invalid calibration input."""
@@ -100,7 +102,9 @@ class CalibratedDecision:
     """Wrap a local BaseDecision instance for one caller-declared, assessed choice workload.
 
     No automatic workload detection. Raw model stays available to the caller.
-    The wrapper does not own or close the underlying model.
+    A wrapper you create from a model you loaded does not own that model: :meth:`close` ends the
+    wrapper only. The wrapper returned by ``load(path, calibration_profile=...)`` created its
+    model, so closing it (or leaving its ``with`` block) closes the model too.
 
     Only ``choice`` questions are supported (``check`` and ``score`` raise
     :class:`CalibrationError`; use the raw model for those), and only requests inside the profile's
@@ -141,7 +145,30 @@ class CalibratedDecision:
         if not hasattr(model,'model_id') or not hasattr(model,'count_tokens'):raise CalibrationError('Calibration is supported for local logits only')
         _verify(model,data)
         self._model=model;self.model_id=model.model_id;self.profile=profile;self._spec=dict(spec)
+        self._closed=False;self._owns_model=False  # load() sets the latter when it created the model
         self.temperature=math.exp(theta[0]);self._artifact_sha=_sha(_DATA if artifact is None else artifact)
+
+    @property
+    def closed(self) -> bool:
+        """Whether :meth:`close` has been called."""
+        return self._closed
+
+    def close(self) -> None:
+        """End this wrapper, and close the model too if ``load()`` created it for this wrapper.
+
+        Safe to call more than once. A model you passed in yourself is left open.
+        """
+        if self._closed:return
+        self._closed=True
+        if self._owns_model:self._model.close()
+
+    def __enter__(self: _T) -> _T:
+        """Return the wrapper itself for use in a ``with`` statement."""
+        return self
+
+    def __exit__(self,*args: object) -> None:
+        """Close the wrapper when the ``with`` block ends."""
+        self.close()
 
     def _coverage(self,kind: str,options: int,tokens: int) -> None:
         if kind!='choice':raise CalibrationError('Profile covers choice only; use the raw model for noul or score')
@@ -172,6 +199,7 @@ class CalibratedDecision:
 
     def count_tokens(self,request: Request) -> int:
         """Exact packed token count of ``request`` (see :meth:`BaseDecision.count_tokens`)."""
+        if self._closed:raise InputError('The calibrated model is closed')
         return self._model.count_tokens(request)
     def predict(self,request: Request) -> CalibratedResult:
         """Answer one ``choice`` request with calibrated probabilities."""
@@ -199,10 +227,12 @@ class CalibratedDecision:
         Every request's scope and packing is validated before any inference runs.
 
         Raises:
-            InputError: ``requests`` holds something other than ``Request`` objects.
+            InputError: ``requests`` holds something other than ``Request`` objects, or the
+                wrapper is closed.
             CalibrationError: A request is not a ``choice`` question or is outside the profile's
                 assessed option/token ranges.
         """
+        if self._closed:raise InputError('The calibrated model is closed')
         if isinstance(requests,(str,bytes)):raise InputError('requests must contain Request objects')
         requests=list(requests)
         # Validate every item's scope and full packing before invoking inference.

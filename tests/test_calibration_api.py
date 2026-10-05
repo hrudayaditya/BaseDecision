@@ -12,7 +12,8 @@ from basedecision.calibration import _DATA, _sha
 
 class Fake:
     precision='bf16';device=SimpleNamespace(type='cuda')
-    def __init__(self,path):self.model_id=str(path);self.calls=0
+    def __init__(self,path):self.model_id=str(path);self.calls=0;self.closed=False
+    def close(self):self.closed=True
     def count_tokens(self,r):return len(r.context)+20
     def predict_batch(self,requests):
         self.calls+=1
@@ -72,6 +73,28 @@ class Tests(unittest.TestCase):
         with patch('basedecision.api.BaseDecision.from_pretrained') as factory:
             with self.assertRaises(CalibrationError):load('/local',calibration_profile='clinc')
             factory.assert_not_called()
+    def test_closing_a_wrapper_leaves_a_model_you_passed_in_open(self):
+        cal=self.wrap()
+        self.assertFalse(cal.closed)
+        cal.close();cal.close()  # safe to repeat
+        self.assertTrue(cal.closed);self.assertFalse(self.raw.closed)
+        for call in (lambda:cal.predict(self.req),lambda:cal.predict_batch([self.req]),
+                     lambda:list(cal.predict_iter([self.req])),lambda:cal.choose(context='s',question='q',options=['a','b']),
+                     lambda:cal.count_tokens(self.req)):
+            with self.assertRaises(InputError):call()
+        self.assertEqual(self.raw.calls,0)
+        self.assertEqual(len(self.raw.predict_batch([self.req])),1)  # the model itself still works
+    def test_load_with_a_profile_returns_a_wrapper_that_owns_its_model(self):
+        with patch('basedecision.api.BaseDecision.from_pretrained',return_value=self.raw),\
+             patch('basedecision.api.CalibratedDecision',side_effect=lambda model,profile:self.wrap()) as made:
+            with load('/local',calibration_profile='sgd_identifier') as cal:
+                self.assertIsInstance(cal,CalibratedDecision);self.assertFalse(self.raw.closed)
+            made.assert_called_once()
+        self.assertTrue(cal.closed);self.assertTrue(self.raw.closed)
+    def test_a_failed_calibration_does_not_leave_the_loaded_model_open(self):
+        with patch('basedecision.api.BaseDecision.from_pretrained',return_value=self.raw):
+            with self.assertRaises(CalibrationError):load('/local',calibration_profile='sgd_identifier')
+        self.assertTrue(self.raw.closed)  # nothing was ever returned to the caller to close
     def test_packaged_inference_contract_unchanged(self):
         a=json.loads(_DATA.read_text());root=Path(__import__('basedecision').__file__).parent
         self.assertTrue(all(_sha(root/k)==v for k,v in a['sdk_contract'].items()))

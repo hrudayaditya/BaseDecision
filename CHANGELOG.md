@@ -87,9 +87,15 @@
 
 ## Added
 
+- `close()`, `closed` and context-manager support on local models (`BaseDecision`, `CPUFastDecision`,
+  `CalibratedDecision`); the cloud backend gains `closed`. `close()` waits for a running request, releases
+  the network and tokenizer (and empties the CUDA cache), and is idempotent; afterwards request methods
+  raise `InputError`. `with load(path) as model:` is the idiomatic form. `load(..., calibration_profile=...)`
+  closes the model it loaded if calibration cannot be applied, instead of leaving it in memory. Changes
+  `client.py` (the `sdk_contract` hash was refreshed); no inference code changed.
 - `load_from_hub(repo_id, revision=...)`: explicit Hub download with the same machine-appropriate defaults;
-  `resolve_device()`; `--device`/`--precision` flags in all example scripts; a Hardware section in the README
-  with measured CPU timings and memory.
+  `resolve_device()`; `--device`/`--precision` flags in all example scripts; CPU timings and memory in the
+  README's "Force the CPU or the GPU" example.
 
 - Error codes `output_budget_exhausted` (reasoning consumed `max_output_tokens`) and `content_filtered`;
   `ProviderError.detail` (safe API identifier); `usage['reasoning_tokens']`;

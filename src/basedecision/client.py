@@ -50,7 +50,13 @@ class BaseDecision:
         max_batch_tokens: Padded-token budget per forward pass.
 
     Calls are serialized by an internal lock, so one instance is safe to share between threads.
+
+    Call :meth:`close` (or use the model as a context manager) to release the weights, and the GPU
+    memory they hold, when you are done; the model is otherwise freed when it is garbage collected.
     """
+
+    _closed: bool = False  # a class default, so instances built without __init__ stay usable
+
 
     @staticmethod
     def from_provider(provider: str, model: str, **kwargs: Any) -> ProviderDecision:
@@ -158,14 +164,45 @@ class BaseDecision:
         self.model_id=str(path);self.max_batch_size=max_batch_size;self.max_batch_tokens=max_batch_tokens
         self._lock=threading.RLock()
 
+    @property
+    def closed(self) -> bool:
+        """Whether :meth:`close` has been called; a closed model cannot answer requests."""
+        return self._closed
+
+    def close(self) -> None:
+        """Release the weights and the tokenizer, and the GPU memory they hold.
+
+        Waits for a running request to finish first. Safe to call more than once. Afterwards
+        ``choose``, ``predict`` and the other request methods raise
+        :class:`~basedecision.InputError`; ``model_id``, ``device`` and ``precision`` stay readable.
+        """
+        with self._lock:
+            if self._closed:return
+            self._closed=True
+            del self._model,self._tokenizer
+        import gc
+        gc.collect()  # the model and its hooks form reference cycles
+        if self.device.type=='cuda':self._torch.cuda.empty_cache()
+
+    def __enter__(self: _T) -> _T:
+        """Return the model itself for use in a ``with`` statement."""
+        return self
+
+    def __exit__(self,*args: object) -> None:
+        """Close the model when the ``with`` block ends."""
+        self.close()
+
+    def _check_open(self) -> None:
+        if self._closed:raise InputError('The model is closed; load it again to run more requests')
+
     def count_tokens(self,request: Request) -> int:
         """Exact complete-input token count; raises if over the supported limit.
 
         Raises:
-            InputError: ``request`` is invalid.
+            InputError: ``request`` is invalid, or the model is closed.
             ContextLengthError: The packed request needs more than ``maximum_tokens``.
         """
-        with self._lock:return pack(self._tokenizer,request,self.maximum_tokens).tokens
+        with self._lock:self._check_open();return pack(self._tokenizer,request,self.maximum_tokens).tokens
 
     def choose(self: _Predicts[_R],*,context: str,question: str,options: Sequence[str | Option]) -> _R:
         """Pick one of ``options`` as the answer to ``question`` about ``context``.
@@ -208,14 +245,15 @@ class BaseDecision:
         request is run.
 
         Raises:
-            InputError: ``requests`` holds something other than ``Request`` objects, or a request
-                is invalid.
+            InputError: ``requests`` holds something other than ``Request`` objects, a request is
+                invalid, or the model is closed.
             ContextLengthError: A request needs more than ``maximum_tokens``.
         """
         if isinstance(requests,(str,bytes)):raise InputError('requests must contain Request objects')
         requests=list(requests)
         if not all(isinstance(r,Request) for r in requests):raise InputError('requests must contain Request objects')
         with self._lock:
+            self._check_open()
             # Batch-local context reuse; no retained cross-request cache of user text.
             contexts={};packed=[]
             for r in requests:

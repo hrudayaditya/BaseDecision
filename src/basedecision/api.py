@@ -45,8 +45,14 @@ def _quiet(model: _M) -> _M:
     return model
 
 def _calibrated(model: BaseDecision,calibration_profile: str | None) -> BaseDecision | CalibratedDecision:
+    """Return ``model``, or a wrapper that owns it (so closing the wrapper closes the model)."""
     if calibration_profile is None:return model
-    return CalibratedDecision(model,profile=calibration_profile)
+    try:wrapper=CalibratedDecision(model,profile=calibration_profile)
+    except BaseException:
+        model.close()  # this model was loaded for the wrapper: do not leave its weights behind
+        raise
+    wrapper._owns_model=True
+    return wrapper
 
 @overload
 def load(path: str | Path, *, calibration_profile: None = None, backend: Literal['default'] | None = None, **kwargs: Any) -> BaseDecision: ...

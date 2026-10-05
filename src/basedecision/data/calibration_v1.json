@@ -17,7 +17,7 @@
   },
   "sdk_version": "0.1.0rc3",
   "sdk_contract": {
-    "client.py": "7fbfa2c54e8fb94b8d98866a288ae78bd0b09b6604075ce5232d2fcdbecca353",
+    "client.py": "8a2881848a093dfaa4d5c74203450985b8cdaa944153ce9a3b7dc32b7d8bf0a9",
     "packing.py": "27a531c28ee2d2849216f22c7f9c6ba4b99eca9ace91beda9fd37837f91064da",
     "_model.py": "5db855a460009b47dc8ede0079614a858588eb499e2dbb7f9db9172ad04a1b3c",
     "types.py": "5f10b5351273c91fc7f75eeac05c41495ed7dd693b23a420e98a1a8aa9f4c1ef"

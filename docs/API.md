@@ -14,6 +14,7 @@
 - `predict_iter(requests, buffer_size=64)`: bounded request buffering.
 - `count_tokens(request)`: local complete packed length; rejects over-budget inputs.
 - `result.to_dict()`: serializable output.
+- `close()` / `closed` / `with load(path) as model:`: release the local weights (and the GPU memory they held). It waits for a running request, is safe to repeat, and afterwards the request methods raise `InputError`. `model_id`, `device` and `precision` stay readable. The cloud backend has the same three; `load(path, calibration_profile=...)` returns a wrapper that owns its model, so closing it closes the model too, while a `CalibratedDecision(model, ...)` you build yourself never closes your model.
 - `SystemOne(model)(request_body)`: answers a Jev/SystemOne request body; see [SYSTEMONE.md](SYSTEMONE.md).
 
 Named questions use `decide(model, context=..., questions={name: schema})`. Schemas contain `kind`, `question`, optional `options`, and score-only `values`. The kind defaults to choice; noul has fixed false/true options and does not accept an options field. Unknown fields and invalid schemas are rejected before inference. Returns a dict of typed results in question order. Each question is an independent model input; this is not shared-state attention or a single-pass multi-question head.
