@@ -280,7 +280,7 @@ class ProviderChainTests(HygieneCase):
 
 SAMPLES: dict[str, Any] = {
     "InputError": lambda: InputError("bad input"),
-    "ContextLengthError": lambda: ContextLengthError(9000, 8192),
+    "ContextLengthError": lambda: ContextLengthError(9000, 8192, at_least=True),
     "CalibrationError": lambda: CalibrationError("out of scope"),
     "ProviderError": lambda: ProviderError("rate_limit", retryable=True, status_code=429),
     "ProviderResponseError": lambda: ProviderResponseError(
