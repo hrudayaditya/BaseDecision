@@ -9,7 +9,7 @@ description = "Native typed decisions with complete-input packing and bounded ba
 readme = "README.md"
 requires-python = ">=3.10"
 license = {file = "LICENSE"}
-authors = [{name = "Aditya"}]
+authors = [{name = "Hrudayaditya Jallu"}]
 dependencies = []
 
 [project.optional-dependencies]
