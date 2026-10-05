@@ -61,23 +61,6 @@ Treat this as a guide, not a guarantee. How a decision model does depends on the
 of its questions, so try it on a sample of your own before relying on it. The probabilities it returns
 are raw softmax values, not calibrated confidence (see [Calibration](docs/CALIBRATION.md)).
 
-<details>
-<summary>The numbers as text</summary>
-
-| Benchmark | GLiNER 2.5 base | GLiNER2.5-Decid… | Decision 1.0 Kai… | Laya | BaseDecision |
-|---|---:|---:|---:|---:|---:|
-| BANKING77 | 23.8 | 65.6 | 40.7 | 14.3 | 68.21 |
-| FinEntity | 70.1 | 66.2 | 37 | 61 | 71.34 |
-| ContractNLI | 22.9 | 21.8 | 36.6 | 29 | 66.76 |
-| VAST | 35.8 | 35.3 | 20.8 | 40.5 | 66.22 |
-| SGD / SGD-X | 45.9 | 0.8 | 48.5 | 42.4 | 51.12 |
-| MuSR | 34.8 | 45.2 | 45.2 | 43.2 | 44.55 |
-| NLI4CT | 39.8 | 48 | 29.8 | 47.7 | 42.26 |
-| PhishNChips | 50.4 | 50 | 49.9 | 50.1 | 50.00 |
-| **Average** | 40.4 | 41.6 | 38.6 | 41.0 | 57.6 |
-
-</details>
-
 ## Examples
 
 These examples reuse the `model` from above.
@@ -318,3 +301,9 @@ for syntax and imports.
 BaseDecision is a decision model (ModernBERT-large encoder with a typed decision head, 8,192-token
 window). It has no `.generate()`, no `AutoModelForCausalLM`, no chat endpoint, and no reasoning
 comparable to a general chat model.
+
+---
+
+## License
+
+Apache 2.0. Developed by Hrudayaditya "Aady" Jallu.

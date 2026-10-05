@@ -14,10 +14,9 @@
 
 ## Changed
 
-- The README gains a "How it performs" section: the benchmark image (`docs/assets/benchmarks.png`), a short
-  write-up (highest average, ahead on five of eight benchmarks, behind on two, one tie) and the numbers as a
-  text table. A test recomputes the averages and the win count from that table, so the prose cannot drift
-  from the data. The two baseline names that were cut off in the source figures are still placeholders
+- The README gains a "How it performs" section: the benchmark image (`docs/assets/benchmarks.png`, with a
+  descriptive alt text) and a short write-up (highest average, ahead on five of eight benchmarks, behind
+  on two, one tie). The two baseline names that were cut off in the source figure are still placeholders
   (`GLiNER2.5-Decid…`, `Decision 1.0 Kai…`) and must be filled in before the README is published.
 - Typing and documentation. The whole package is now typed: `mypy --strict` passes (configuration in
   `pyproject.toml`, run `mypy`), including on machines where Torch, Transformers and the provider SDKs are
