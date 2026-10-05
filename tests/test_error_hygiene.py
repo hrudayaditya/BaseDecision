@@ -33,6 +33,7 @@ from basedecision import (
     BaseDecision,
     CalibrationError,
     ContextLengthError,
+    CPUFastUnavailable,
     InputError,
     Option,
     Request,
@@ -282,6 +283,7 @@ SAMPLES: dict[str, Any] = {
     "InputError": lambda: InputError("bad input"),
     "ContextLengthError": lambda: ContextLengthError(9000, 8192, at_least=True),
     "CalibrationError": lambda: CalibrationError("out of scope"),
+    "CPUFastUnavailable": lambda: CPUFastUnavailable("cpu_fast is not supported here"),
     "ProviderError": lambda: ProviderError("rate_limit", retryable=True, status_code=429),
     "ProviderResponseError": lambda: ProviderResponseError(
         "unexpected_output_block", detail="function_call"
