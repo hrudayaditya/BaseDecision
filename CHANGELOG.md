@@ -5,9 +5,28 @@
   codes (`SystemOneError`), no silent truncation, images/videos rejected, cloud providers refused.
 - `examples/systemone_quickstart.py` and `examples/systemone_server.py` (reference HTTP server; auto device
   selection), `docs/SYSTEMONE.md`.
-- No change to the hash-pinned inference modules (`client.py`, `packing.py`, `_model.py`, `types.py`).
+- Input hardening (changes `packing.py`, `types.py` and one line of `client.py`; `_model.py`, the network,
+  is untouched): see Fixed. For ordinary inputs the packed tokens are identical to the earlier release,
+  verified by a 450-case golden corpus (`tests/data/packing_golden.json`, including the exact over-limit
+  error counts) and by 120 real-model predictions with bit-identical logits. The `sdk_contract` hashes
+  in `calibration_v1.json` were refreshed accordingly; the GPU quality assessment behind the calibration
+  profiles was not repeated for this change.
 
 ## Fixed
+
+- Oversized input no longer costs time and memory proportional to its size. The window is fixed at 8,192
+  tokens and nothing is truncated, so an input that cannot fit is now rejected after a bounded amount of
+  work (a 100 MB text: 46 s and 6.7 GiB before, 0.02 s now, and the model lock is no longer held while
+  tokenizing it). Inputs up to 262,144 characters still report their exact token count; larger ones report
+  "at least N tokens" (`ContextLengthError.at_least`; `SystemOneError.details['at_least']`).
+- Special-token strings in user text (`[SEP]`, `[MASK]`, `[CLS]`, `[PAD]`, `<|endoftext|>`, ...) were
+  tokenized into the real structural tokens, so untrusted text could forge the packed format. They are now
+  ordinary text in the context, the question and every option.
+- A lone surrogate in a context, question or option raised a raw `TypeError` from the tokenizer; it is now
+  an `InputError` naming the part that contains it.
+- `choose(options={...})` with a dict (or a set) silently used the keys as labels and dropped the
+  descriptions (or ordered the options randomly). Mappings and sets are now rejected with a message that
+  points to `Option(id, text)`.
 
 - First run without an NVIDIA GPU: `load(path)`, the README quickstart and the examples crashed with
   `CUDA is unavailable`. `load()` now chooses CUDA/BF16 when a GPU with native BF16 is present and CPU/FP32

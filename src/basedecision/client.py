@@ -91,7 +91,7 @@ class BaseDecision:
             # Batch-local context reuse; no retained cross-request cache of user text.
             contexts={};packed=[]
             for r in requests:
-                if r.context not in contexts:contexts[r.context]=encode(self._tokenizer,r.context)
+                if r.context not in contexts:contexts[r.context]=encode(self._tokenizer,r.context,self.maximum_tokens,'context')
                 packed.append(pack(self._tokenizer,r,self.maximum_tokens,contexts[r.context]))
             plan=list(batch_plan([p.tokens for p in packed],self.max_batch_size,self.max_batch_tokens))
             results=[None]*len(requests)

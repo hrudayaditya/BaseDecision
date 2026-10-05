@@ -8,7 +8,7 @@ from basedecision.packing import pack, batch_plan
 
 class Tokenizer:
     cls_token_id=1; sep_token_id=2; mask_token_id=3; pad_token_id=0
-    def __call__(self,text,add_special_tokens=False):
+    def __call__(self,text,add_special_tokens=False,**kwargs):
         return {'input_ids':[ord(c)+10 for c in text]}
 
 class Tests(unittest.TestCase):

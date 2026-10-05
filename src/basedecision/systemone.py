@@ -148,8 +148,9 @@ class SystemOneError(InputError):
         code: Machine-readable error code (see :data:`ErrorCode`).
         field: Dotted path of the offending request field, e.g. ``questions.urgency``,
             or ``None`` when the error is not tied to a field.
-        details: Extra integers for some codes; ``context_length_exceeded`` carries
-            ``required_tokens`` and ``maximum_tokens``.
+        details: Extra values for some codes; ``context_length_exceeded`` carries
+            ``required_tokens`` and ``maximum_tokens``, plus ``at_least=True`` when the input
+            was so far beyond the window that ``required_tokens`` is only a lower bound.
     """
 
     def __init__(
@@ -158,13 +159,13 @@ class SystemOneError(InputError):
         message: str,
         *,
         field: str | None = None,
-        **details: int,
+        **details: int | bool,
     ) -> None:
         """Create an error; ``details`` become the ``details`` attribute."""
         super().__init__(message)
         self.code: ErrorCode = code
         self.field = field
-        self.details: dict[str, int] = dict(details)
+        self.details: dict[str, int | bool] = dict(details)
 
     def __reduce__(self) -> tuple[Any, ...]:
         """Support pickling, which keyword-only arguments would otherwise break."""
@@ -181,7 +182,7 @@ class SystemOneError(InputError):
 
 
 def _rebuild_error(
-    code: ErrorCode, message: str, field: str | None, details: dict[str, int]
+    code: ErrorCode, message: str, field: str | None, details: dict[str, int | bool]
 ) -> SystemOneError:
     return SystemOneError(code, message, field=field, **details)
 
@@ -575,24 +576,38 @@ class SystemOne:
                     where = f"questions.{question.qid}"
                     return SystemOneError("invalid_criteria", f"{where}: {inner}", field=where)
         if isinstance(exc, ContextLengthError):
-            return SystemOneError(
-                "context_length_exceeded",
-                f"input requires {exc.required_tokens} tokens; maximum is {exc.maximum_tokens}",
-                required_tokens=exc.required_tokens,
-                maximum_tokens=exc.maximum_tokens,
+            return _length_error_with_details(
+                f"input requires {_at_least(exc)}{exc.required_tokens} tokens; "
+                f"maximum is {exc.maximum_tokens}",
+                exc,
+                None,
             )
         return SystemOneError("invalid_request", str(exc))
 
 
+def _at_least(exc: ContextLengthError) -> str:
+    return "at least " if exc.at_least else ""
+
+
+def _length_error_with_details(
+    message: str, exc: ContextLengthError, field: str | None
+) -> SystemOneError:
+    error = SystemOneError("context_length_exceeded", message, field=field)
+    error.details["required_tokens"] = exc.required_tokens
+    error.details["maximum_tokens"] = exc.maximum_tokens
+    if exc.at_least:
+        error.details["at_least"] = True
+    return error
+
+
 def _length_error(qid: str, exc: ContextLengthError) -> SystemOneError:
     where = f"questions.{qid}"
-    return SystemOneError(
-        "context_length_exceeded",
-        f"{where}: complete input requires {exc.required_tokens} tokens; maximum is "
-        f"{exc.maximum_tokens}. Nothing was truncated; shorten the state or the criteria.",
-        field=where,
-        required_tokens=exc.required_tokens,
-        maximum_tokens=exc.maximum_tokens,
+    return _length_error_with_details(
+        f"{where}: complete input requires {_at_least(exc)}{exc.required_tokens} tokens; "
+        f"maximum is {exc.maximum_tokens}. Nothing was truncated; shorten the state or the "
+        "criteria.",
+        exc,
+        where,
     )
 
 

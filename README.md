@@ -103,9 +103,10 @@ sgd = CalibratedDecision(model, profile='sgd_schema')
 # result = sgd.predict(sgd_request)
 ```
 
-RC4 preserves the measured RC3 inference modules byte-for-byte. Its additions are
-Python convenience functions and a post-processing wrapper. No additional GPU
-quality evaluation is claimed for this packaging change.
+The profiles were fitted with the RC3 inference modules. Later releases changed how
+unusual input is handled (see the CHANGELOG), but for ordinary inputs the packed tokens
+and logits are bit-identical, and the pinned hashes were refreshed accordingly. The GPU
+quality assessment behind the profiles has not been repeated since.
 
 ## Local inference
 

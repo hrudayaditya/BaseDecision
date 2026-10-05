@@ -47,8 +47,9 @@ def _sha(path):
     return h.hexdigest()
 
 def _verify(model,data):
-    # RC4 intentionally preserves the four measured RC3 inference modules byte-for-byte.
-    # Their hashes are the compatibility contract, rather than a cosmetic version string.
+    # The hashes of the four inference modules are the compatibility contract, rather than a
+    # cosmetic version string. Changing a module means refreshing them after an equivalence check
+    # (see CONTRIBUTING.md).
     root=Path(__file__).parent
     required={'client.py','packing.py','_model.py','types.py'}
     contract=data.get('sdk_contract',{})
