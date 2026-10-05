@@ -26,6 +26,7 @@ Design rules, in line with the rest of the package:
 
 from __future__ import annotations
 
+import contextlib
 import json
 from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
@@ -203,18 +204,22 @@ def parse_request_body(data: bytes | str) -> dict[str, Any]:
         result: dict[str, Any] = {}
         for key, value in pairs:
             if key in result:
-                raise ValueError(f"duplicate key {key!r}")
+                raise ValueError("duplicate object key")  # never echo the key itself
             result[key] = value
         return result
 
+    value: Any = None
+    reason: str | None = None
     try:
         text = data.decode("utf-8") if isinstance(data, bytes) else data
         value = json.loads(text, parse_constant=reject_constant, object_pairs_hook=unique_pairs)
     except (ValueError, RecursionError) as exc:
-        # json.JSONDecodeError and UnicodeDecodeError are ValueError subclasses.
-        raise SystemOneError(
-            "invalid_request", f"request body is not valid JSON: {_brief(exc)}"
-        ) from None
+        # json.JSONDecodeError and UnicodeDecodeError are ValueError subclasses and hold the
+        # whole body (.doc / .object). Keep a short description only and raise below, outside
+        # the handler, so the exception that holds the request text is not attached.
+        reason = _brief(exc)
+    if reason is not None:
+        raise SystemOneError("invalid_request", f"request body is not valid JSON: {reason}")
     if not isinstance(value, dict):
         raise SystemOneError("invalid_request", "request body must be a JSON object")
     return value
@@ -235,7 +240,7 @@ def _render(value: object, field: str) -> str:
     """Render a state/instruction value as text: strings as-is, other JSON compactly."""
     if isinstance(value, str):
         return value
-    try:
+    with contextlib.suppress(TypeError, ValueError, RecursionError):
         return json.dumps(
             value,
             ensure_ascii=False,
@@ -243,12 +248,12 @@ def _render(value: object, field: str) -> str:
             sort_keys=True,
             allow_nan=False,
         )
-    except (TypeError, ValueError, RecursionError):
-        raise SystemOneError(
-            "invalid_request",
-            f"{field} must be a string or a finite, JSON-serializable value",
-            field=field,
-        ) from None
+    # Raised outside the suppressed handler, so no exception about the value is attached.
+    raise SystemOneError(
+        "invalid_request",
+        f"{field} must be a string or a finite, JSON-serializable value",
+        field=field,
+    )
 
 
 def _option_text(value: object, fallback: str, field: str) -> str:

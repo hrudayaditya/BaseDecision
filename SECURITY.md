@@ -15,7 +15,10 @@ request limits, concurrency/queue limits and authorization for downstream action
 - Provider SDKs use explicit official HTTPS endpoints, finite request timeouts,
   bounded retries, no tools, and no dynamic code execution. OpenAI requests set
   `store=False`; this does not promise zero provider retention.
-- Public provider errors use sanitized codes, not upstream bodies or messages.
+- Public provider errors use sanitized codes, not upstream bodies or messages. They are raised
+  without a chained cause or context, so the original SDK exception (which holds the HTTP request,
+  including the API key header and the request text) is not kept alive behind them. The same
+  holds for JSON parse errors, which would otherwise keep the whole document in `.doc`.
   Do not enable verbose upstream HTTP logging with private data or credentials.
 - Provider output is locally checked for an exact integer option index, no extra
   keys and no duplicate keys. Refusals/incomplete outputs never become decisions.
@@ -23,7 +26,14 @@ request limits, concurrency/queue limits and authorization for downstream action
   form, but cannot guarantee resistance to prompt injection or correct decisions.
 - The package does not log request context or API keys. Caller-owned clients,
   debuggers, exception-local capture and provider infrastructure are outside this
-  guarantee. Do not publish crash dumps or environment dumps.
+  guarantee. In particular, tools that record the *local variables* of every frame a
+  traceback passes through (`show_locals`, some crash reporters) can still reach objects
+  held by those frames, such as your own `Request` and `ProviderDecision._client`, which
+  holds the API key. Turn local-variable capture off in production or scrub `api_key`
+  fields. Do not publish crash dumps or environment dumps.
+- Every exception the package defines can be pickled and copied, so errors raised in
+  worker processes (`ProcessPoolExecutor`, `multiprocessing`, Celery, Ray, Dask) reach the
+  parent intact.
 
 ## SystemOne adapter and reference server
 

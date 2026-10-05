@@ -20,6 +20,13 @@
   ignored, tool calls and unknown types are rejected with `unexpected_output_block`, and malformed
   responses can only ever produce a `ProviderResponseError`.
 - Unpickling a `ProviderError` doubled its message prefix.
+- Provider errors no longer keep the original SDK exception attached as `__context__` (it holds the HTTP
+  request including the API key header and the request text); the same for `parse_selection` and the
+  SystemOne `parse_request_body`/state rendering, whose JSON errors hold the whole document. Sanitized
+  errors are now raised outside the `except` block. The duplicate-key message no longer echoes the key.
+- `ContextLengthError` could not be unpickled, so it surfaced as `BrokenProcessPool` (and killed the pool)
+  when raised in a `ProcessPoolExecutor`/`multiprocessing` worker. Fixed from `errors.py` via `copyreg`,
+  leaving the byte-pinned `types.py` untouched.
 
 ## Added
 

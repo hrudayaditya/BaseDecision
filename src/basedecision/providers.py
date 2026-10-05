@@ -47,9 +47,12 @@ def _unique_object(pairs):
 def parse_selection(text, count):
     if not isinstance(text, str) or len(text) > 4096:
         raise ProviderResponseError('invalid_output')
+    failed = False
     try:
         value = json.loads(text, object_pairs_hook=_unique_object)
     except (ValueError, TypeError, RecursionError):
+        failed = True  # raised below, outside the handler: JSONDecodeError keeps the text in .doc
+    if failed:
         raise ProviderResponseError('invalid_json') from None
     if (not isinstance(value, dict) or set(value) != {'option_index'} or
             type(value['option_index']) is not int or not 0 <= value['option_index'] < count):
@@ -126,6 +129,7 @@ class ProviderDecision:
             raise InputError('Provider client is closed')
         payload = self._payload(request)
         schema = dict(type='object',properties={'option_index':dict(type='integer',enum=list(range(len(request.options))))},required=['option_index'],additionalProperties=False)
+        error = None
         try:
             if self.provider == 'openai':
                 options = {} if self.reasoning_effort is None else {'reasoning': {'effort': self.reasoning_effort}}
@@ -137,8 +141,11 @@ class ProviderDecision:
                     messages=[dict(role='user',content=payload)],max_tokens=self.max_output_tokens,
                     output_config={'format':dict(type='json_schema',schema=schema)})
         except Exception as exc:
-            # Never propagate upstream messages, bodies, credentials or request text.
+            # Keep only a sanitized error and raise it below, OUTSIDE this handler: raising here
+            # would attach the original SDK exception (request headers incl. the API key, and
+            # the request body) as __context__, reachable by crash reporters and debuggers.
             error = _safe_error(exc)
+        if error is not None:
             raise error from None
         # Normalize first, then apply the closed policy in _wire (total: only ProviderResponseError).
         wire = to_plain(response)
