@@ -53,13 +53,18 @@ class ProviderResponseError(ProviderError):
 # concurrent.futures.ProcessPoolExecutor, multiprocessing, Celery, Ray and Dask: the parent sees
 # BrokenProcessPool instead of the real error. The copyreg registry teaches pickle and copy how to
 # rebuild it without touching types.py. It applies to this exact class (there are no subclasses).
-def _restore_context_length_error(required: int, maximum: int) -> ContextLengthError:
+def _restore_context_length_error(
+    required: int, maximum: int, at_least: bool = False
+) -> ContextLengthError:
     # types.py is a pinned legacy module without annotations, hence the ignore.
-    return ContextLengthError(required, maximum)  # type: ignore[no-untyped-call]
+    return ContextLengthError(required, maximum, at_least)  # type: ignore[no-untyped-call]
 
 
 def _reduce_context_length_error(error: ContextLengthError) -> tuple[Any, ...]:
-    return (_restore_context_length_error, (error.required_tokens, error.maximum_tokens))
+    return (
+        _restore_context_length_error,
+        (error.required_tokens, error.maximum_tokens, error.at_least),
+    )
 
 
 copyreg.pickle(ContextLengthError, _reduce_context_length_error)

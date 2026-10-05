@@ -17,10 +17,10 @@
   },
   "sdk_version": "0.1.0rc3",
   "sdk_contract": {
-    "client.py": "42cd8e2947893127d5d899fe43cc7fb3d2faba4c56f62b1e87ce36abd55df3c9",
-    "packing.py": "79c0555de22b57e62dc720fde4d0feada707f57bd80f3fa88b423f094a98edcb",
+    "client.py": "683842203d64aab61c2bae736854e15e984398ed29285ccf8d7631e1f5f90df9",
+    "packing.py": "bdfff014e6019cd443085fd87ee4b6b74a5aea4ebed32703155d91b02d420f83",
     "_model.py": "f2425ae36b28c434534ba1438a5b530bf2297973b8dc9b523d07085eebfc9919",
-    "types.py": "2f73974f772a9b8ab715451962f7eaa40ec87072e41b4700ee620557361294b4"
+    "types.py": "86c7d0f4e2cb44add65e3b4d2113aaa281eace6bda17d657d0939b8ec023e8c4"
   },
   "precision": "bf16",
   "device_type": "cuda",

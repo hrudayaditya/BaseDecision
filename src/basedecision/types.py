@@ -1,4 +1,5 @@
 """Public value types. No ML runtime import needed for validation."""
+from collections.abc import Mapping
 from dataclasses import dataclass, asdict
 import math
 
@@ -6,9 +7,15 @@ class InputError(ValueError):
     """Invalid request schema or ambiguous option rendering."""
 
 class ContextLengthError(InputError):
-    def __init__(self, required, maximum):
-        self.required_tokens, self.maximum_tokens = required, maximum
-        super().__init__(f'Complete input requires {required} tokens; maximum is {maximum}. No text was truncated.')
+    """The complete input does not fit the model's window. Nothing is ever truncated.
+
+    ``required_tokens`` is exact unless ``at_least`` is true: an input far beyond the window is
+    rejected before all of it has been tokenized, and the count is then a lower bound.
+    """
+    def __init__(self, required, maximum, at_least=False):
+        self.required_tokens, self.maximum_tokens, self.at_least = required, maximum, bool(at_least)
+        qualifier = 'at least ' if at_least else ''
+        super().__init__(f'Complete input requires {qualifier}{required} tokens; maximum is {maximum}. No text was truncated.')
 
 @dataclass(frozen=True)
 class Option:
@@ -58,6 +65,8 @@ class Result:
 
 def options_from(labels):
     if isinstance(labels,(str,bytes)):raise InputError('options must be a sequence, not a string')
+    if isinstance(labels,(Mapping,set,frozenset)):
+        raise InputError('options must be an ordered sequence (a list or tuple) of strings or Option objects, not a mapping or set; to give an option a description use Option(id, text)')
     try:values=list(labels)
     except TypeError as e:raise InputError('options must be iterable') from e
     if not all(isinstance(x,(str,Option)) for x in values):raise InputError('Options must be strings or Option objects')
