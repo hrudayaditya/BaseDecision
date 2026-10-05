@@ -32,6 +32,10 @@
 
 ## Fixed
 
+- Passing an over-long text to a model loaded with `load()` / `load_from_hub()` made Transformers print
+  "Token indices sequence length is longer than the specified maximum ... will result in indexing
+  errors" next to the clean `ContextLengthError`. The notice was wrong (nothing is sent to the model), so
+  the loaders now mark it as already shown. `BaseDecision.from_pretrained` / `from_hub` are unchanged.
 - Oversized input no longer costs time and memory proportional to its size. The window is fixed at 8,192
   tokens and nothing is truncated, so an input that cannot fit is now rejected after a bounded amount of
   work (a 100 MB text: 46 s and 6.7 GiB before, 0.02 s now, and the model lock is no longer held while

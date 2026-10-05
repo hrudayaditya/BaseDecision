@@ -454,6 +454,17 @@ class RealModelTests(unittest.TestCase):
         self.assertLess(time.perf_counter() - started, 1.0)
         self.assertTrue(caught.exception.at_least)
 
+    def test_an_over_long_request_prints_no_misleading_tokenizer_notice(self) -> None:
+        from basedecision import load
+
+        # Transformers warns once per tokenizer, so only a freshly loaded model can show the notice.
+        fresh = load(MODEL)
+        with (
+            self.assertNoLogs("transformers", level="WARNING"),
+            self.assertRaises(ContextLengthError),
+        ):
+            fresh.choose(context="word " * 20_000, question="Which?", options=["a", "b"])
+
     def test_a_hostile_request_does_not_stall_other_callers(self) -> None:
         results: list[float] = []
 

@@ -180,6 +180,64 @@ class LoadTests(unittest.TestCase):
             load("/model", device="cpu", precision="bf16")
 
 
+class FakeTokenizer:
+    def __init__(self) -> None:
+        self.deprecation_warnings: dict[str, bool] = {}
+
+
+class FakeLoaded:
+    def __init__(self) -> None:
+        self._tokenizer = FakeTokenizer()
+
+
+NOTICE = "sequence-length-is-longer-than-the-specified-maximum"
+
+
+class LengthNoticeTests(unittest.TestCase):
+    """Transformers' "will result in indexing errors" notice is wrong here: we raise instead."""
+
+    def loaded_by(self, call: Any) -> FakeLoaded:
+        loaded = FakeLoaded()
+        hub = types.SimpleNamespace(snapshot_download=lambda **_: "/cache/snapshot")
+        with (
+            patch.dict(sys.modules, {"torch": CPU_ONLY, "huggingface_hub": hub}),
+            patch.object(BaseDecision, "from_pretrained", return_value=loaded),
+            patch.object(BaseDecision, "from_hub", return_value=loaded),
+            patch.object(CPUFastDecision, "from_pretrained", return_value=loaded),
+            patch.object(CPUFastDecision, "from_hub", return_value=loaded),
+        ):
+            self.assertIs(call(), loaded)
+        return loaded
+
+    def test_every_loader_marks_the_notice_as_already_shown(self) -> None:
+        calls = {
+            "load": lambda: load("/model"),
+            "load cpu_fast": lambda: load("/model", backend="cpu_fast"),
+            "load_from_hub": lambda: load_from_hub("owner/model"),
+            "load_from_hub cpu_fast": lambda: load_from_hub("owner/model", backend="cpu_fast"),
+        }
+        for name, call in calls.items():
+            with self.subTest(loader=name):
+                loaded = self.loaded_by(call)
+                self.assertIs(loaded._tokenizer.deprecation_warnings[NOTICE], True)
+
+    def test_other_notices_are_untouched_and_odd_objects_are_left_alone(self) -> None:
+        loaded = FakeLoaded()
+        loaded._tokenizer.deprecation_warnings["something-else"] = False
+        with (
+            patch.dict(sys.modules, {"torch": CPU_ONLY}),
+            patch.object(BaseDecision, "from_pretrained", return_value=loaded),
+        ):
+            load("/model")
+        self.assertEqual(loaded._tokenizer.deprecation_warnings["something-else"], False)
+        for odd in (object(), types.SimpleNamespace(_tokenizer=None)):
+            with (
+                patch.dict(sys.modules, {"torch": CPU_ONLY}),
+                patch.object(BaseDecision, "from_pretrained", return_value=odd),
+            ):
+                self.assertIs(load("/model"), odd)
+
+
 class LoadFromHubTests(unittest.TestCase):
     def test_defaults_are_machine_appropriate_and_the_download_is_explicit(self) -> None:
         downloads: list[dict[str, Any]] = []
