@@ -1,4 +1,5 @@
 """Official SDK serialization with in-memory HTTP transport. No network or real key."""
+import importlib
 import importlib.util
 import json
 import unittest
@@ -10,11 +11,10 @@ AVAILABLE = all(importlib.util.find_spec(x) is not None for x in ('openai','anth
 @unittest.skipUnless(AVAILABLE, 'Install provider extras for official SDK transport tests')
 class TransportTests(unittest.TestCase):
     def run_provider(self, provider, status=200):
-        import httpx
         from openai import OpenAI
         from anthropic import Anthropic
         captured=[]
-        def handler(request):
+        def handler(request,httpx):
             captured.append((str(request.url),json.loads(request.content)))
             if status!=200:
                 return httpx.Response(status,json={'error':{'message':'private body test-secret','type':'authentication_error'}},headers={'request-id':'test'})
@@ -30,7 +30,16 @@ class TransportTests(unittest.TestCase):
         client=BaseDecision.from_provider(provider,'test-model',api_key='test-secret',max_retries=0)
         client._client.close()
         cls=OpenAI if provider=='openai' else Anthropic
-        client._client=cls(api_key='test-secret',max_retries=0,http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        # Newer SDK generations require httpx2 clients, older ones httpx; use whichever the SDK accepts.
+        for name in ('httpx2','httpx'):
+            try:flavour=importlib.import_module(name)
+            except ImportError:continue
+            try:
+                client._client=cls(api_key='test-secret',max_retries=0,http_client=flavour.Client(
+                    transport=flavour.MockTransport(lambda request,flavour=flavour:handler(request,flavour))))
+                break
+            except TypeError:continue
+        else:raise AssertionError('no httpx flavour accepted by the SDK')
         try:
             if status==200:
                 result=client.choose(context='source',question='question',options=['A','B'])
