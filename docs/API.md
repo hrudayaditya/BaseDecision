@@ -20,6 +20,10 @@ Named questions use `decide(model, context=..., questions={name: schema})`. Sche
 
 `Option('stable_id', 'Readable description')` is optional. Plain strings work as both ID and label. Users do not need to supply custom definitions. Descriptions can help ambiguous labels, but no model can infer an undocumented meaning for an arbitrary opaque identifier.
 
+**Batching.** Local batch size defaults to 1. For offline throughput on similar-length inputs, explicitly set `max_batch_size=8` and an appropriate `max_batch_tokens` when loading the model. Near-8K batch=4 was the largest measured configuration in the supplied 32768-token benchmark (see [BENCHMARKS.md](../BENCHMARKS.md)). No universal speedup or GPU memory guarantee is claimed; on a CPU, batching mixed-length requests is slower than one at a time. `predict_iter` bounds the buffered request count; `predict_batch` materializes the submitted iterable.
+
+Cloud backends, their errors and their limits: [CLOUD.md](CLOUD.md).
+
 Local input limit: 8192 **total packed tokens**, including question and all intact options; the checkpoint may impose a smaller limit. Overflow and token-identical choices raise explicit errors. The package does not summarize or truncate inputs automatically.
 
 Importing the public package does not import Torch. Optional runtime/provider dependencies are imported when used. Local batch size remains 1 by default. Supported local devices: CPU/FP32 and CUDA/BF16 or FP32; packaged calibration covers CUDA/BF16 only.
