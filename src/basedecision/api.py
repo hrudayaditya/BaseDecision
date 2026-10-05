@@ -20,6 +20,19 @@ def _check_options(backend,calibration_profile):
         info=calibration_profiles().get(calibration_profile)
         if info is None or not info['available']:raise CalibrationError('Unknown or unavailable calibration profile')
 
+_LENGTH_NOTICE='sequence-length-is-longer-than-the-specified-maximum'
+
+def _quiet(model):
+    """Mark Transformers' "longer than the model maximum" notice as already shown.
+
+    This package packs the text itself and refuses an over-long request with ``ContextLengthError``,
+    so that notice ("... will result in indexing errors") is wrong as well as alarming. Setting the
+    flag is Transformers' own warn-once mechanism; a model without a tokenizer is left alone.
+    """
+    notices=getattr(getattr(model,'_tokenizer',None),'deprecation_warnings',None)
+    if isinstance(notices,dict):notices[_LENGTH_NOTICE]=True
+    return model
+
 def _calibrated(model,calibration_profile):
     if calibration_profile is None:return model
     from .calibration import CalibratedDecision
@@ -36,8 +49,8 @@ def load(path, *, calibration_profile=None, backend=None, **kwargs):
     if backend=='cpu_fast':
         from .cpu import CPUFastDecision
         kwargs.setdefault('device','cpu');kwargs.setdefault('precision','bf16')
-        return CPUFastDecision.from_pretrained(path,**kwargs)
-    return _calibrated(BaseDecision.from_pretrained(path,**_hardware(kwargs)),calibration_profile)
+        return _quiet(CPUFastDecision.from_pretrained(path,**kwargs))
+    return _calibrated(_quiet(BaseDecision.from_pretrained(path,**_hardware(kwargs))),calibration_profile)
 
 def load_from_hub(repo_id, *, revision=None, calibration_profile=None, backend=None, **kwargs):
     """Download a checkpoint from the Hugging Face Hub, then load it like :func:`load`.
@@ -52,8 +65,8 @@ def load_from_hub(repo_id, *, revision=None, calibration_profile=None, backend=N
     if backend=='cpu_fast':
         from .cpu import CPUFastDecision
         kwargs.setdefault('device','cpu');kwargs.setdefault('precision','bf16')
-        return CPUFastDecision.from_hub(repo_id,revision=revision,**kwargs)
-    return _calibrated(BaseDecision.from_hub(repo_id,revision=revision,**_hardware(kwargs)),calibration_profile)
+        return _quiet(CPUFastDecision.from_hub(repo_id,revision=revision,**kwargs))
+    return _calibrated(_quiet(BaseDecision.from_hub(repo_id,revision=revision,**_hardware(kwargs))),calibration_profile)
 
 def decide(model, *, context, questions):
     """Answer an ordered mapping of named question schemas over one context.

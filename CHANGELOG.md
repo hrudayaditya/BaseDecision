@@ -21,6 +21,11 @@
   range or on a failed self-test it raises `CPUFastUnavailable` (an `InputError`) with advice, never
   silently falling back. `backend_info()` gains `self_test`. Verified with the real checkpoint on torch
   2.6.0/transformers 4.48.0, 2.9.1/4.57.6 and 2.14.1/4.57.6; refused cleanly on transformers 5.18.
+- The README now starts with a three-line install and a six-line first run, followed by one short,
+  runnable example per supported feature. The tests execute those examples in order against a real
+  checkpoint and assert the outputs the README prints; the Hugging Face, OpenAI/Anthropic and
+  GPU-calibration examples are only compiled and import-checked. Provider details moved to the new
+  `docs/CLOUD.md`, the batching guidance to `docs/API.md`; the stale rc4 wheel command is gone.
 
 ## Removed
 
@@ -32,6 +37,10 @@
 
 ## Fixed
 
+- Passing an over-long text to a model loaded with `load()` / `load_from_hub()` made Transformers print
+  "Token indices sequence length is longer than the specified maximum ... will result in indexing
+  errors" next to the clean `ContextLengthError`. The notice was wrong (nothing is sent to the model), so
+  the loaders now mark it as already shown. `BaseDecision.from_pretrained` / `from_hub` are unchanged.
 - Oversized input no longer costs time and memory proportional to its size. The window is fixed at 8,192
   tokens and nothing is truncated, so an input that cannot fit is now rejected after a bounded amount of
   work (a 100 MB text: 46 s and 6.7 GiB before, 0.02 s now, and the model lock is no longer held while

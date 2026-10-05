@@ -1,221 +1,208 @@
-## RC5 experimental CPU fast mode
+# BaseDecision
+
+**Ask a question about a text. Get the answer and how sure the model is.**
+Pick one option, answer yes/no, or give a rating, for texts up to 8,192 tokens. It runs on your
+own laptop or GPU, with no API key, or through OpenAI/Anthropic. It is a classifier, not a chatbot:
+it never writes text, it chooses among the answers you give it.
+
+**Release candidate 0.1.0rc5.** Local inference matches RC2's 8,751-decision regression (identical
+logits and labels). The OpenAI/Anthropic backends are tested against mock servers only; live
+provider acceptance is pending.
+
+## Install
+
+```bash
+pip install ".[runtime]"    # run this inside this folder; needs Python 3.10+
+```
+
+That is all for local use (the first-time download of Torch is large). Not on PyPI yet.
+
+| I want to... | Install |
+|---|---|
+| Run the model on my machine (CPU or NVIDIA GPU; Apple-silicon Macs use the CPU) | `pip install ".[runtime]"` |
+| ...and download the model from Hugging Face | `pip install ".[runtime,hub]"` |
+| Use OpenAI or Anthropic only, no Torch | `pip install ".[providers]"` |
+
+Already have Torch 2.6+ and Transformers 4.48-4.57 and want pip to leave them alone?
+`pip install --no-deps .` installs only BaseDecision. Nothing is ever installed behind your back: a
+missing package gives an error that says which extra to install.
+
+## Try it
 
 ```python
 from basedecision import load
-model = load('/path/to/model', backend='cpu_fast')
+
+model = load('/path/to/model')   # the folder with model.safetensors; GPU if you have one, else CPU
 result = model.choose(context='Please refund my purchase.',
                       question='What does the customer request?',
                       options=['Refund', 'Delivery status', 'Change address'])
-print(result.to_dict())
-print(model.backend_info())
+print(result.answer)          # Refund
+print(result.probabilities)   # Refund is about 0.99999, the other two about 0.000002
 ```
 
-Works with torch 2.6+ and transformers 4.48-4.57; nothing is pinned or installed for you, and a short self-test at load time proves the fast path works on your installation (otherwise `CPUFastUnavailable` is raised and nothing changes). This is explicit opt-in; the default loader and GPU calibration behavior are preserved. Without a GPU, plain `load(path)` already uses the portable CPU/FP32 path (see Hardware below); `cpu_fast` is a separate experimental opt-in. GPU calibration profiles remain workload-specific. CPU calibration is not enabled.
+Loading takes about 8 s and ~2 GiB of RAM; each answer takes about 0.05 s on a laptop CPU for short
+texts. No flags are needed. The examples below reuse this `model`.
 
-See [CPU support and limitations](docs/CPU.md).
+## Examples
 
-# BaseDecision
-
-Typed decisions from a local Laya/ModernBERT checkpoint, OpenAI, or Anthropic.
-Choose a label, answer a boolean question, or select an ordered score level through
-one Python interface. No label definitions are required; optional descriptions
-can be supplied using `Option(id, text)`.
-
-**Release candidate 0.1.0rc4.** Local inference is grounded in RC2's 8,751-decision
-regression with identical logits and labels. Cloud backends passed official-SDK HTTP transport tests (OpenAI 2.54.0,
-Anthropic 0.125.0); live provider acceptance is still pending. This is a decision SDK, not a
-causal language model or a general chat/agent server.
-
-## Installation
-
-Install the included wheel without changing your working ML dependencies:
-
-```bash
-python -m pip install --no-deps dist/basedecision-0.1.0rc4-py3-none-any.whl
-```
-
-From a source checkout, choose the dependencies you need:
-
-```bash
-python -m pip install '.[runtime,hub]'   # local model and explicit Hub download
-python -m pip install '.[providers]'    # OpenAI and Anthropic only; no Torch needed
-```
-
-These commands do not imply a published PyPI package or model repository exists.
-Dependency ranges are compatibility targets. The tested local environment was
-Python 3.12, Torch 2.9.1+cu126, Transformers 4.57.6, A100-SXM4-80GB, BF16 autocast.
-
-## Quick Python integration
+### Yes or no: `check`
 
 ```python
-from basedecision import load, decide
-
-model = load('/path/to/exported/model')   # uses a GPU if there is one, otherwise the CPU
-answers = decide(model, context='Please refund the duplicate payment.', questions={
-    'intent': {'kind': 'choice', 'question': 'What does the customer request?',
-               'options': ['Refund request', 'Delivery status', 'Other request']},
-    'refund_requested': {'kind': 'noul', 'question': 'Is a refund explicitly requested?'},
-})
-print(answers['intent'].answer)
+result = model.check(context='The account is active.', question='Is the account active?')
+print(result.answer)   # True (a real Python bool)
 ```
 
-Each question is evaluated independently. No definitions are required for plain labels.
-The existing `choose`, `check`, `score` and batch interfaces remain available.
-See [Python API](docs/API.md), [calibration coverage](docs/CALIBRATION.md), and the
-runnable `examples/python_quickstart.py`.
+### A rating: `score`
 
-## Hardware: it runs on a laptop
+```python
+result = model.score(context='I am satisfied.', question='How satisfied is the customer?',
+                     levels=['Dissatisfied', 'Neutral', 'Satisfied'], values=[1, 2, 3])
+print(result.answer, round(result.expected_value, 2))   # Satisfied 3.0
+```
 
-`load()` and `load_from_hub()` choose what works on your machine: **CUDA with BF16** when an
-NVIDIA GPU with native BF16 is present (the configuration the model was measured on),
-otherwise **CPU with FP32**. No flags are needed, and `model.device` / `model.precision` tell you
-what was picked. Override with `load(path, device='cpu', precision='fp32')` or
-`device='cuda'`; an explicit choice is never second-guessed, so `device='cuda'` without a
-GPU is an error. Apple-silicon Macs run on the CPU (Metal/MPS is not supported).
+### Several questions about one text: `decide`
 
-Measured on one 10-core Apple-silicon laptop, FP32 on the CPU (a rough guide, not a benchmark):
+```python
+from basedecision import decide
 
-| Request length | Time per decision | Peak memory |
+answers = decide(model, context='I was charged twice. Please refund the duplicate payment.',
+                 questions={
+                     'intent': {'kind': 'choice', 'question': 'What does the customer request?',
+                                'options': ['Refund request', 'Delivery status', 'Other']},
+                     'duplicate': {'kind': 'noul', 'question': 'Was the customer charged twice?'},
+                 })
+print(answers['intent'].answer, answers['duplicate'].answer)   # Refund request True
+```
+
+`kind` is `choice`, `noul` (yes/no) or `score`. Each question is answered independently.
+
+### Options with descriptions: `Option`
+
+Plain strings are fine. If a label is ambiguous, add a description:
+
+```python
+from basedecision import Option
+
+result = model.choose(context='Where is my parcel?', question='What is requested?',
+                      options=[Option('refund', 'Customer wants money back'),
+                               Option('status', 'Customer asks where the parcel is')])
+print(result.answer, '-', result.label)   # status - Customer asks where the parcel is
+```
+
+### Many texts at once: `predict_batch`, `predict_iter`
+
+```python
+from basedecision import Request
+
+options = (Option('refund', 'Refund'), Option('status', 'Delivery status'))
+requests = [Request('Please refund this purchase.', 'What is requested?', options),
+            Request('Where is my parcel?', 'What is requested?', options)]
+print([r.answer for r in model.predict_batch(requests)])    # ['refund', 'status']
+for result in model.predict_iter(requests):                 # same, one at a time, for long streams
+    print(result.answer)
+```
+
+### Everything in a result
+
+```python
+print(model.choose(context='Please refund my purchase.', question='What is requested?',
+                   options=['Refund', 'Other']).to_dict())
+# answer, option_id, label, probabilities, raw_logits, packed_tokens, kind, ...  (plain JSON types)
+```
+
+`probabilities` are the model's raw softmax, not calibrated.
+
+### Download the model from Hugging Face: `load_from_hub`
+
+Needs `pip install ".[runtime,hub]"`. The repository name is a placeholder until the model is published.
+
+```python
+from basedecision import load_from_hub
+
+model = load_from_hub('YOUR_NAMESPACE/YOUR_MODEL', revision='YOUR_COMMIT_HASH')
+```
+
+A commit hash pins the exact weights. Add `local_files_only=True` to use only the local cache. Sign-in
+uses the standard Hugging Face setup; no remote Python code is ever run.
+
+### Force the CPU or the GPU
+
+```python
+model = load('/path/to/model', device='cpu', precision='fp32')
+print(model.device, model.precision)    # cpu fp32
+# load('/path/to/model', device='cuda')   # force the GPU; an error if there is none
+```
+
+`load` picks CUDA with BF16 when a suitable NVIDIA GPU exists, else the CPU with FP32. An explicit
+choice is never second-guessed. Rough CPU timings on one 10-core Apple-silicon laptop (a guide, not a
+benchmark):
+
+| Text length | Time per answer | Peak memory |
 |---|---:|---:|
 | short (a few dozen tokens) | ~0.05 s | ~2 GiB |
 | 512 tokens | ~0.4 s | ~2 GiB |
 | 4,096 tokens | ~8 s | ~5 GiB |
 | 8,191 tokens (the limit) | ~30 s | ~8 GiB |
 
-Loading takes about 10 s and needs ~2 GiB of RAM for the 1.7 GB of weights. Batching mixed-length
-requests is slower than one at a time on a CPU. The experimental `cpu_fast` backend was developed on an
-Intel Xeon server and was 10-15x *slower* than this default on the laptop above.
-
-## Reviewed calibration
-
-Calibration is opt-in, with raw probabilities as the default. `CalibratedDecision`
-wraps the same loaded model for an explicit assessed workload. It returns both raw
-and calibrated probabilities while preserving the selected answer. The bundled
-SGD profiles have aggregate improvements and documented short/two-option regressions.
-VAST remains raw by default; CLINC is blocked by its uncertainty assessment.
-These profiles do not apply to arbitrary refund questions or all 8K requests.
+### Experimental CPU mode: `cpu_fast`
 
 ```python
-from basedecision import CalibratedDecision, calibration_profiles
-print(calibration_profiles())
-# Only for correctly formatted SGD service-intent requests:
-sgd = CalibratedDecision(model, profile='sgd_schema')
-# result = sgd.predict(sgd_request)
+from basedecision import load, CPUFastUnavailable
+
+try:
+    model = load('/path/to/model', backend='cpu_fast')
+except CPUFastUnavailable:                  # unsupported Torch/Transformers: nothing is changed
+    model = load('/path/to/model')          # the normal CPU path
 ```
 
-The profiles were fitted with the RC3 inference modules. Later releases changed how
-unusual input is handled (see the CHANGELOG), but for ordinary inputs the packed tokens
-and logits are bit-identical, and the pinned hashes were refreshed accordingly. The GPU
-quality assessment behind the profiles has not been repeated since.
+Opt-in and experimental: it checks itself at load time and never falls back silently. It was
+developed on an Intel Xeon server and was 10-15x *slower* than the default on an Apple-silicon laptop,
+so measure before you use it. See [CPU support and limitations](docs/CPU.md).
 
-## Local inference
+### OpenAI or Anthropic instead of the local model
 
-```python
-from basedecision import load
-
-model = load('/path/to/exported/model')
-result = model.choose(
-    context='Please refund this purchase.',
-    question='What does the customer request?',
-    options=['Refund request', 'Delivery status', 'Other request'],
-)
-print(result.answer)
-print(result.probabilities)  # raw, uncalibrated softmax
+```bash
+export OPENAI_API_KEY=...     # or ANTHROPIC_API_KEY; needs: pip install ".[providers]"
 ```
-
-`BaseDecision.from_pretrained(path)` is the explicit low-level constructor: it defaults to
-CUDA/BF16 and fails on machines without that. Use `load()` unless you want that strictness.
-
-For a published checkpoint, download explicitly:
-
-```python
-from basedecision import load_from_hub
-
-model = load_from_hub('YOUR_NAMESPACE/YOUR_MODEL', revision='YOUR_REVISION')
-```
-
-Replace the placeholders with an actual repository and revision (a commit hash pins the exact weights). Authentication
-uses standard Hugging Face configuration; no token is embedded in code. Use
-`local_files_only=True` for cached-only loading. No remote Python is executed.
-
-## OpenAI and Anthropic
-
-Set `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` using your shell's secure secret setup.
-Do not put credentials in source files or chat. Choose a model that supports the
-provider's structured JSON output API.
 
 ```python
 from basedecision import BaseDecision
 
-with BaseDecision.from_provider('openai', 'YOUR_OPENAI_MODEL_ID') as model:
-    result = model.choose(context='Please refund this purchase.',
+with BaseDecision.from_provider('openai', 'YOUR_OPENAI_MODEL_ID') as cloud:
+    result = cloud.choose(context='Please refund this purchase.',
                           question='What does the customer request?',
                           options=['Refund request', 'Delivery status', 'Other request'])
-
-with BaseDecision.from_provider('anthropic', 'YOUR_ANTHROPIC_MODEL_ID') as model:
-    result = model.check(context='The account is active.', question='Is the account active?')
+    print(result.answer)   # same methods as the local model; swap in 'anthropic' for Anthropic
 ```
 
-Cloud calls send the entire supplied context/question/options to that provider.
-They never occur as an automatic fallback from local inference. Official clients
-are reused across requests and closed by the context manager. OpenAI uses
-Responses structured output; Anthropic uses Messages `output_config.format`.
-Provider model availability and schema support must be verified for your account.
+Your text is sent to that provider, and never as an automatic fallback. Cloud results have no
+probabilities (`result.probabilities is None`). Reasoning models, errors, retries and costs:
+[docs/CLOUD.md](docs/CLOUD.md).
 
-Cloud results contain `probabilities=None`, `raw_logits=None`, and
-`calibration_status='not_available_from_provider'`. We do not turn a selected
-label or generated confidence into a probability distribution. `usage` reports
-provider input/output token counts when available. Provider limits differ from
-the local model; the byte-size guard does not claim an exact provider token count.
+### Calibrated probabilities (optional, GPU only)
 
-**Reasoning models.** Responses that contain reasoning items (OpenAI) or thinking
-blocks (Anthropic) are supported: that deliberation is ignored, only the structured
-decision is used, and OpenAI's hidden reasoning tokens are reported as
-`usage['reasoning_tokens']` (they are billed and count against `max_output_tokens`).
-If a model spends its whole output budget before answering you get the error code
-`output_budget_exhausted`: raise `max_output_tokens` or, for OpenAI reasoning models,
-lower the effort with `from_provider('openai', model, reasoning_effort='low')`
-(sent as `reasoning.effort`; the option is only valid for reasoning models). Tool
-calls and unknown item types are rejected (`unexpected_output_block`), never guessed at.
-
-## Boolean, scores, and batching
+Raw probabilities are the default. For the assessed SGD service-intent workloads only, you can opt in
+to calibrated ones. This needs a CUDA GPU with BF16 and handles `choice` questions only.
 
 ```python
-from basedecision import Request, Option
+from basedecision import CalibratedDecision, calibration_profiles
 
-decision = model.check(context='The account is active.', question='Is the account active?')
-# decision.answer is a Python bool
-
-rating = model.score(context='I am satisfied.', question='Rate satisfaction.',
-                     levels=['Dissatisfied', 'Neutral', 'Satisfied'], values=[1, 2, 3])
-# selected_value is the chosen level; expected_value is available only locally.
-
-requests = [Request('Please refund this purchase.', 'What is requested?',
-                    (Option('refund', 'Refund request'), Option('status', 'Delivery status')))]
-results = model.predict_batch(requests)
+print(list(calibration_profiles()))   # ['clinc', 'sgd_identifier', 'sgd_schema', 'vast']
+calibrated = CalibratedDecision(model, profile='sgd_schema')   # raises on a CPU-only machine
+result = calibrated.predict(sgd_request)    # a correctly formatted SGD request
+print(result.probabilities, result.raw_probabilities)
 ```
 
-Use an open client for these calls. Local batch size defaults to 1. For offline
-throughput on similar-length inputs, explicitly set `max_batch_size=8` and an
-appropriate `max_batch_tokens` when loading the model. Near-8K batch=4 was the
-largest measured configuration in the supplied 32768-token benchmark. No universal
-speedup or GPU memory guarantee is claimed. `predict_iter` bounds the buffered
-request count; `predict_batch` materializes the submitted iterable.
+These profiles do not apply to other questions. Coverage and caveats: [docs/CALIBRATION.md](docs/CALIBRATION.md).
 
-Cloud `predict_batch` is sequential, not the providers' asynchronous Batch API.
-All request schemas are checked before its first API call. Earlier successful
-calls may have been billed if a later call fails. There are no implicit fallback
-calls or repeated sampling until a preferred answer appears.
+### Answer Jev / SystemOne requests: `SystemOne`
 
-## Jev / SystemOne API
-
-Requests in the Jev/SystemOne wire format (`POST /v1/systemone`: a `state` and typed `questions`,
-answered with per-option probabilities) can be answered by a local model:
+For the Jev/SystemOne wire format (a `state` and typed `questions`):
 
 ```python
-from basedecision import SystemOne, load
+from basedecision import SystemOne
 
-service = SystemOne(load('/path/to/exported/model'))  # GPU if available, else CPU
+service = SystemOne(model)
 response = service({'model': 'basedecision',
                     'state': 'Our checkout started returning errors and orders are blocked.',
                     'questions': {
@@ -223,58 +210,62 @@ response = service({'model': 'basedecision',
                                        'criteria': {'billing': 'Payments or invoices',
                                                     'technical': 'Bugs or outages'}},
                         'outage': {'type': 'noul', 'instructions': 'Is a service down?'}}})
-print(response['answers'])
+print(response['answers']['department']['choice'])   # technical
 ```
 
-Text only, one forward pass per question, no silent truncation, cloud providers not supported (they
-return no probabilities). `examples/systemone_server.py` serves the endpoint over HTTP (a reference,
-not a hardened server). See [Jev / SystemOne API](docs/SYSTEMONE.md) for the exact mapping, the
-differences from the reference implementation, and the error codes.
-
-## Errors and limits
-
-- Local inputs must fit 8192 total packed tokens (or a smaller checkpoint limit),
-  including the question, all 2–255 options, delimiters and source text.
-- No input or option is silently truncated. `ContextLengthError` includes
-  `required_tokens` and `maximum_tokens`; `count_tokens(request)` performs exact
-  local packing and rejects oversized requests.
-- `InputError` means a schema/configuration problem. Context is a string; serialize
-  structured inputs explicitly. Option IDs and descriptions must be distinct.
-- Provider errors expose `code`, `retryable`, and `status_code` without returning
-  upstream bodies. Codes include authentication/permission, rate limit, timeout,
-  request rejection, refusal, incomplete output, `output_budget_exhausted`,
-  `content_filtered`, `unexpected_output_block` and invalid selection. An optional
-  `detail` names the offending item type (an API identifier, never response text).
-- The official SDK owns retries (default 2, configurable 0–5). There is no second
-  retry loop in BaseDecision. Timeout is a request timeout, not a total batch or
-  retry wall-clock deadline. Retries can increase elapsed time and request costs.
-- Invalid/refused responses are errors, not a guessed label, NONE, or false.
-- Local action-head output is not interpreted as abstention or authorization.
-
-```python
-from basedecision import ContextLengthError
-from basedecision.errors import ProviderError
-
-try:
-    result = model.predict(requests[0])
-except ContextLengthError as exc:
-    print(exc.required_tokens, exc.maximum_tokens)
-except ProviderError as exc:
-    print(exc.code, exc.retryable)  # sanitized; avoid printing provider internals
-```
-
-## Testing
+Or serve it over HTTP (a reference server, bound to localhost; see
+[docs/SYSTEMONE.md](docs/SYSTEMONE.md) before exposing it):
 
 ```bash
-python -m unittest discover -s tests -v          # fast tests; no model needed
-BASEDECISION_TEST_MODEL=/path/to/model python -m unittest discover -s tests -v   # + real-model tests
+python examples/systemone_server.py --model /path/to/model
+curl -s localhost:8080/v1/systemone -H 'Content-Type: application/json' \
+  -d '{"model":"basedecision","state":"I was charged twice. Please refund me.","questions":{"refund":{"type":"noul","instructions":"Does the customer want a refund?"}}}'
 ```
 
-With a checkpoint, the tests also run this README's quickstarts and the example scripts exactly as
-written. Provider tests use mocks, so run one real call per provider with your own key before relying
-on a cloud backend.
+Text only, one forward pass per question, no truncation, and no cloud providers (they return no
+probabilities).
 
-Read `MODEL_CARD.md` for measured quality and limitations, `BENCHMARKS.md` for batching, and
-`SECURITY.md` for deployment boundaries. This package serves the decision architecture and optional
-cloud APIs. It does not provide `AutoModelForCausalLM`, `.generate()`, chat-completion endpoints,
-arbitrary Hugging Face architectures, or reasoning equivalent to Qwen/DeepSeek/Llama.
+## Limits and errors
+
+```python
+from basedecision import ContextLengthError, InputError
+
+print(model.count_tokens(requests[0]))   # 22: how many tokens a request uses, before you run it
+try:
+    model.choose(context='word ' * 20000, question='Which?', options=['a', 'b'])
+except ContextLengthError as error:
+    print(error.required_tokens, error.maximum_tokens)   # 20014 8192
+except InputError as error:                              # bad options, wrong types, duplicates
+    print(error)
+```
+
+- The limit is **8,192 tokens in total**: the question, every option and the text. Nothing is ever
+  silently truncated; an over-long input is a `ContextLengthError` you can handle, for example by
+  splitting the text.
+- `InputError` means the request itself is wrong. The context must be a string (serialize structured
+  data yourself), and option ids and labels must be distinct.
+- A cloud call that fails raises `ProviderError` with `code`, `retryable` and `status_code`, and never
+  includes your key or text ([docs/CLOUD.md](docs/CLOUD.md)).
+- A refused or invalid answer is an error, never a guessed label or a silent `False`.
+
+## More
+
+- [Python API reference](docs/API.md) · [Calibration](docs/CALIBRATION.md) · [CPU mode](docs/CPU.md) ·
+  [Cloud backends](docs/CLOUD.md) · [Jev / SystemOne](docs/SYSTEMONE.md)
+- [Model card](MODEL_CARD.md) (quality and limitations) · [Benchmarks](BENCHMARKS.md) ·
+  [Security](SECURITY.md) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md)
+- Runnable scripts: `examples/python_quickstart.py`, `examples/decide.py`,
+  `examples/systemone_quickstart.py`, `examples/systemone_server.py`.
+
+```bash
+python -m unittest discover -s tests -v                                          # no model needed
+BASEDECISION_TEST_MODEL=/path/to/model python -m unittest discover -s tests -v   # + the real model
+```
+
+With a checkpoint, the tests run the examples above in order and check the output they print. The
+Hugging Face, cloud and GPU-calibration examples cannot run on a laptop, so they are only checked
+for syntax and imports.
+
+BaseDecision is a decision model (ModernBERT-large encoder with a typed decision head, 8,192-token
+window). It has no `.generate()`, no `AutoModelForCausalLM`, no chat endpoint, and no reasoning
+comparable to a general chat model.
