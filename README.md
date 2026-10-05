@@ -10,7 +10,7 @@ print(result.to_dict())
 print(model.backend_info())
 ```
 
-Requires Torch 2.9.1 and Transformers 4.57.6. This is explicit opt-in; the default loader and GPU calibration behavior are preserved. Without a GPU, plain `load(path)` already uses the portable CPU/FP32 path (see Hardware below); `cpu_fast` is a separate experimental opt-in. GPU calibration profiles remain workload-specific. CPU calibration is not enabled.
+Works with torch 2.6+ and transformers 4.48-4.57; nothing is pinned or installed for you, and a short self-test at load time proves the fast path works on your installation (otherwise `CPUFastUnavailable` is raised and nothing changes). This is explicit opt-in; the default loader and GPU calibration behavior are preserved. Without a GPU, plain `load(path)` already uses the portable CPU/FP32 path (see Hardware below); `cpu_fast` is a separate experimental opt-in. GPU calibration profiles remain workload-specific. CPU calibration is not enabled.
 
 See [CPU support and limitations](docs/CPU.md).
 
