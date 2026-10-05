@@ -41,9 +41,46 @@ print(result.probabilities)   # Refund is about 0.99999, the other two about 0.0
 ```
 
 Loading takes about 8 s and ~2 GiB of RAM; each answer takes about 0.05 s on a laptop CPU for short
-texts. No flags are needed. The examples below reuse this `model`.
+texts. No flags are needed.
+
+## How it performs
+
+BaseDecision against GLiNER 2.5 base, Laya and two further baselines on eight benchmarks (higher is
+better):
+
+![BaseDecision has the highest average score, 57.6 against 38.6 to 41.6, and is ahead on five of eight benchmarks: BANKING77, FinEntity, ContractNLI, VAST and SGD/SGD-X. It is behind on MuSR and NLI4CT, and all models score about 50 on PhishNChips.](docs/assets/benchmarks.png)
+
+- **Highest average:** 57.6, against 38.6 to 41.6 for the other four models (the unweighted mean of
+  the eight benchmarks).
+- **Ahead on five benchmarks:** BANKING77, FinEntity, ContractNLI, VAST and SGD/SGD-X, by 1.2 to 30.2
+  points. The largest gaps are on ContractNLI and VAST.
+- **Behind on two:** MuSR (44.6 against 45.2) and NLI4CT (42.3 against 48.0).
+- **PhishNChips does not separate the models:** all five score between 49.9 and 50.4.
+
+Treat this as a guide, not a guarantee. How a decision model does depends on the task and the wording
+of its questions, so try it on a sample of your own before relying on it. The probabilities it returns
+are raw softmax values, not calibrated confidence (see [Calibration](docs/CALIBRATION.md)).
+
+<details>
+<summary>The numbers as text</summary>
+
+| Benchmark | GLiNER 2.5 base | GLiNER2.5-Decid… | Decision 1.0 Kai… | Laya | BaseDecision |
+|---|---:|---:|---:|---:|---:|
+| BANKING77 | 23.8 | 65.6 | 40.7 | 14.3 | 68.21 |
+| FinEntity | 70.1 | 66.2 | 37 | 61 | 71.34 |
+| ContractNLI | 22.9 | 21.8 | 36.6 | 29 | 66.76 |
+| VAST | 35.8 | 35.3 | 20.8 | 40.5 | 66.22 |
+| SGD / SGD-X | 45.9 | 0.8 | 48.5 | 42.4 | 51.12 |
+| MuSR | 34.8 | 45.2 | 45.2 | 43.2 | 44.55 |
+| NLI4CT | 39.8 | 48 | 29.8 | 47.7 | 42.26 |
+| PhishNChips | 50.4 | 50 | 49.9 | 50.1 | 50.00 |
+| **Average** | 40.4 | 41.6 | 38.6 | 41.0 | 57.6 |
+
+</details>
 
 ## Examples
+
+These examples reuse the `model` from above.
 
 ### Yes or no: `check`
 
