@@ -49,7 +49,7 @@ texts. No flags are needed.
 BaseDecision against GLiNER 2.5 base, Laya and two further baselines on eight benchmarks (higher is
 better):
 
-![BaseDecision has the highest average score, 57.6 against 38.6 to 41.6, and is ahead on five of eight benchmarks: BANKING77, FinEntity, ContractNLI, VAST and SGD/SGD-X. It is behind on MuSR and NLI4CT, and all models score about 50 on PhishNChips.](docs/assets/benchmarks.png)
+![BaseDecision has the highest average score, 57.6 against 38.6 to 41.6, and is ahead on five of eight benchmarks: BANKING77, FinEntity, ContractNLI, VAST and SGD/SGD-X. It is behind on MuSR and NLI4CT, and all models score about 50 on PhishNChips.](https://raw.githubusercontent.com/hrudayaditya/BaseDecision/main/docs/assets/benchmarks.png)
 
 - **Highest average:** 57.6, against 38.6 to 41.6 for the other four models (the unweighted mean of
   the eight benchmarks).
@@ -60,7 +60,7 @@ better):
 
 Treat this as a guide, not a guarantee. How a decision model does depends on the task and the wording
 of its questions, so try it on a sample of your own before relying on it. The probabilities it returns
-are raw softmax values, not calibrated confidence (see [Calibration](docs/CALIBRATION.md)).
+are raw softmax values, not calibrated confidence (see [Calibration](https://github.com/hrudayaditya/BaseDecision/blob/main/docs/CALIBRATION.md)).
 
 ## Examples
 
@@ -178,7 +178,7 @@ except CPUFastUnavailable:                  # unsupported Torch/Transformers: no
 
 Opt-in and experimental: it checks itself at load time and never falls back silently. It was
 developed on an Intel Xeon server and was 10-15x *slower* than the default on an Apple-silicon laptop,
-so measure before you use it. See [CPU support and limitations](docs/CPU.md).
+so measure before you use it. See [CPU support and limitations](https://github.com/hrudayaditya/BaseDecision/blob/main/docs/CPU.md).
 
 ### OpenAI or Anthropic instead of the local model
 
@@ -198,7 +198,7 @@ with BaseDecision.from_provider('openai', 'YOUR_OPENAI_MODEL_ID') as cloud:
 
 Your text is sent to that provider, and never as an automatic fallback. Cloud results have no
 probabilities (`result.probabilities is None`). Reasoning models, errors, retries and costs:
-[docs/CLOUD.md](docs/CLOUD.md).
+[docs/CLOUD.md](https://github.com/hrudayaditya/BaseDecision/blob/main/docs/CLOUD.md).
 
 ### Calibrated probabilities (optional, GPU only)
 
@@ -214,7 +214,7 @@ result = calibrated.predict(sgd_request)    # a correctly formatted SGD request
 print(result.probabilities, result.raw_probabilities)
 ```
 
-These profiles do not apply to other questions. Coverage and caveats: [docs/CALIBRATION.md](docs/CALIBRATION.md).
+These profiles do not apply to other questions. Coverage and caveats: [docs/CALIBRATION.md](https://github.com/hrudayaditya/BaseDecision/blob/main/docs/CALIBRATION.md).
 
 ### Answer Jev / SystemOne requests: `SystemOne`
 
@@ -235,7 +235,7 @@ print(response['answers']['department']['choice'])   # technical
 ```
 
 Or serve it over HTTP with the reference server in the repository's `examples/` folder (bound to
-localhost; see [docs/SYSTEMONE.md](docs/SYSTEMONE.md) before exposing it):
+localhost; see [docs/SYSTEMONE.md](https://github.com/hrudayaditya/BaseDecision/blob/main/docs/SYSTEMONE.md) before exposing it):
 
 ```bash
 python examples/systemone_server.py --model /path/to/model
@@ -278,15 +278,15 @@ except InputError as error:                              # bad options, wrong ty
 - `InputError` means the request itself is wrong. The context must be a string (serialize structured
   data yourself), and option ids and labels must be distinct.
 - A cloud call that fails raises `ProviderError` with `code`, `retryable` and `status_code`, and never
-  includes your key or text ([docs/CLOUD.md](docs/CLOUD.md)).
+  includes your key or text ([docs/CLOUD.md](https://github.com/hrudayaditya/BaseDecision/blob/main/docs/CLOUD.md)).
 - A refused or invalid answer is an error, never a guessed label or a silent `False`.
 
 ## More
 
-- [Python API reference](docs/API.md) · [Calibration](docs/CALIBRATION.md) · [CPU mode](docs/CPU.md) ·
-  [Cloud backends](docs/CLOUD.md) · [Jev / SystemOne](docs/SYSTEMONE.md)
-- [Benchmarks](BENCHMARKS.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md) ·
-  [Contributing](CONTRIBUTING.md)
+- [Python API reference](https://github.com/hrudayaditya/BaseDecision/blob/main/docs/API.md) · [Calibration](https://github.com/hrudayaditya/BaseDecision/blob/main/docs/CALIBRATION.md) · [CPU mode](https://github.com/hrudayaditya/BaseDecision/blob/main/docs/CPU.md) ·
+  [Cloud backends](https://github.com/hrudayaditya/BaseDecision/blob/main/docs/CLOUD.md) · [Jev / SystemOne](https://github.com/hrudayaditya/BaseDecision/blob/main/docs/SYSTEMONE.md)
+- [Benchmarks](https://github.com/hrudayaditya/BaseDecision/blob/main/BENCHMARKS.md) · [Security](https://github.com/hrudayaditya/BaseDecision/blob/main/SECURITY.md) · [Changelog](https://github.com/hrudayaditya/BaseDecision/blob/main/CHANGELOG.md) ·
+  [Contributing](https://github.com/hrudayaditya/BaseDecision/blob/main/CONTRIBUTING.md)
 - Runnable scripts, in the repository's `examples/` folder: `python_quickstart.py`, `decide.py`,
   `systemone_quickstart.py`, `systemone_server.py`.
 

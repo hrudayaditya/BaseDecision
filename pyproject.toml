@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77"]  # 77 adds SPDX license expressions (PEP 639)
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,9 +8,33 @@ version = "0.1.0rc5"
 description = "Native typed decisions with complete-input packing and bounded batching"
 readme = "README.md"
 requires-python = ">=3.10"
-license = {file = "LICENSE"}
+license = "Apache-2.0"
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
 authors = [{name = "Hrudayaditya Jallu"}]
+keywords = ["classification", "decision-model", "modernbert", "nlp", "structured-output"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
+]
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/hrudayaditya/BaseDecision"
+Documentation = "https://github.com/hrudayaditya/BaseDecision/blob/main/docs/API.md"
+Source = "https://github.com/hrudayaditya/BaseDecision"
+Issues = "https://github.com/hrudayaditya/BaseDecision/issues"
+Changelog = "https://github.com/hrudayaditya/BaseDecision/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 openai = ["openai>=2.54,<3"]
@@ -36,9 +60,6 @@ disallow_subclassing_any = false  # nn.Module is Any when Torch is not installed
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-[tool.setuptools]
-license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
 
 [tool.setuptools.package-data]
 basedecision = ["py.typed", "data/*.json"]

@@ -14,6 +14,12 @@
 
 ## Changed
 
+- Package metadata for PyPI: the license is the SPDX expression `Apache-2.0` (instead of the license text
+  pasted into the `License` field; needs setuptools 77 or newer to build), `[project.urls]` (homepage, source,
+  issues, documentation, changelog), classifiers for Python 3.10 to 3.14 and typed code, and keywords. Every
+  link and image in the README is now an absolute URL, because PyPI cannot resolve relative ones; a test
+  forbids relative links and checks that each absolute link points at a file that exists. New tests check the
+  metadata and that the version in `pyproject.toml` equals `basedecision.__version__`.
 - The README now installs from PyPI (`pip install "basedecision[runtime]"`, `[runtime,hub]`, `[providers]`;
   `pip install --no-deps basedecision` to leave an existing Torch alone) and says "from a clone" where a step
   needs the repository (`examples/`, the tests, `pip install ".[runtime]"`). The link to `MODEL_CARD.md` is
