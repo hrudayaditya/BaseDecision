@@ -12,6 +12,14 @@
   in `calibration_v1.json` were refreshed accordingly; the GPU quality assessment behind the calibration
   profiles was not repeated for this change.
 
+## Removed
+
+- `tools/` (the HPC regression, GPU benchmark, calibration-smoke and `cpu_fast` verification runners, which
+  needed the research checkout and datasets), `audits/`, `LOCAL_VERIFICATION.json` and
+  `cpu_fast_verification.json` (internal release evidence), and the research-adapter packing parity test.
+  The hardware-independent part of the `cpu_fast` verification now lives in
+  `tests/test_cpu_fast_kernels.py`. Fine-tuning, RL and evaluation code is not part of this repository.
+
 ## Fixed
 
 - Oversized input no longer costs time and memory proportional to its size. The window is fixed at 8,192

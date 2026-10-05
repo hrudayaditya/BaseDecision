@@ -10,12 +10,6 @@ Global attention and padded or batch>1 backbone attention use the original imple
 
 Only Torch 2.9.1 / Transformers 4.57.6 are accepted for fast mode. Unsupported versions fail with a clear error before model loading. Standard CPU FP32 remains available; fast mode never silently chooses a different backend. BF16 may be slow on hardware without efficient support. This release does not promise a latency target on arbitrary CPUs. CPU calibration profiles remain disabled.
 
-Prior *experimental script* measurements on Xeon Platinum 8480+ achieved about 1.02s at 4k and 2.83s near 8k. Those numbers are not yet measurements of the RC5 instance-local implementation. A 471-case comparison of that earlier path changed three labels (one gain, two losses); probabilities can shift. Eight-case execution fixtures do not establish model accuracy or calibrated confidence.
+Prior *experimental script* measurements on Xeon Platinum 8480+ achieved about 1.02s at 4k and 2.83s near 8k. Those numbers are not yet measurements of the RC5 instance-local implementation. A 471-case comparison of that earlier path changed three labels (one gain, two losses); probabilities can shift. On one 10-core Apple-silicon laptop `cpu_fast` was 10-15x *slower* than the default CPU/FP32 path, so treat it as an opt-in for the hardware it was developed on, not a general speed-up.
 
-Run from the installed RC5 source directory:
-
-```bash
-python -u tools/verify_cpu_fast.py --model "$BD_DATA/runs/model" --output cpu_fast_verification.json
-```
-
-This uses a small randomly initialized architecture for direct kernel checks, then the real checkpoint for packing, question-type, batch, default-instance isolation and long-input checks. It does not rerun the 2,814-row calibration evaluation. Choose thread settings externally before startup, for example OMP_NUM_THREADS=16 and MKL_NUM_THREADS=16. Do not run concurrent performance jobs when measuring latency.
+The adapter is covered by `tests/test_cpu_fast_kernels.py`: a tiny randomly initialized model compares the tiled attention and head against the reference (including padded and batched inputs, which fall back to the reference) and proves that installing it changes only that instance; with `BASEDECISION_TEST_MODEL` the real checkpoint is compared against the default FP32 backend. These tests need torch 2.9.1 and transformers 4.57.6 and are skipped otherwise. They do not establish model accuracy or calibrated confidence. Choose thread settings externally before startup, for example OMP_NUM_THREADS=16 and MKL_NUM_THREADS=16. Do not run concurrent performance jobs when measuring latency.

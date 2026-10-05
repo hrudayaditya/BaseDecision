@@ -1,8 +1,5 @@
-import importlib.util
-import os
 import threading
 import unittest
-from pathlib import Path
 from basedecision import BaseDecision, Request, Option, InputError, ContextLengthError
 from basedecision.packing import pack, batch_plan
 
@@ -58,18 +55,5 @@ class Tests(unittest.TestCase):
         calls.clear()
         with self.assertRaises(ContextLengthError):engine.predict_batch(req+[self.request('x'*9000)])
         self.assertEqual(calls,[])
-    def test_research_packing_parity(self):
-        path=os.environ.get('BASEDECISION_REFERENCE_PACKER')
-        if not path:self.skipTest('Set BASEDECISION_REFERENCE_PACKER for research parity')
-        spec=importlib.util.spec_from_file_location('reference_repair',path)
-        ref=importlib.util.module_from_spec(spec);spec.loader.exec_module(ref)
-        for kind in ('choice','noul','score'):
-            r=self.request(kind=kind)
-            q=dict(type=kind,instructions=r.question,options=[dict(option_id=o.id,text=o.text) for o in r.options],target={'distribution':[.5,.5]})
-            expected=ref.pack(Tokenizer(),ref.encode_question(Tokenizer(),q),ref.encode(Tokenizer(),r.context),8192)
-            actual=pack(Tokenizer(),r)
-            self.assertEqual(list(actual.ids),expected['ids'])
-            self.assertEqual(list(actual.markers),expected['markers'])
-            self.assertEqual(actual.qtype,expected['qtype'])
 
 if __name__=='__main__':unittest.main()

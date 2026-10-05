@@ -1,7 +1,6 @@
 include LICENSE THIRD_PARTY_NOTICES.md README.md MODEL_CARD.md BENCHMARKS.md SECURITY.md CHANGELOG.md
 recursive-include examples *.py
 recursive-include tests *.py *.json
-recursive-include tools *.py *.sh
 
 include CONTRIBUTING.md
 recursive-include docs *.md
