@@ -14,6 +14,11 @@
 
 ## Changed
 
+- The README now installs from PyPI (`pip install "basedecision[runtime]"`, `[runtime,hub]`, `[providers]`;
+  `pip install --no-deps basedecision` to leave an existing Torch alone) and says "from a clone" where a step
+  needs the repository (`examples/`, the tests, `pip install ".[runtime]"`). The link to `MODEL_CARD.md` is
+  gone because that file is no longer in the repository. Package author is now "Hrudayaditya Jallu", and the
+  README has a License section.
 - The README gains a "How it performs" section: the benchmark image (`docs/assets/benchmarks.png`, with a
   descriptive alt text) and a short write-up (highest average, ahead on five of eight benchmarks, behind
   on two, one tie). The two baseline names that were cut off in the source figure are still placeholders

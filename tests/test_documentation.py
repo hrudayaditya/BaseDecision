@@ -91,10 +91,13 @@ class ReadmeStructureTests(unittest.TestCase):
         extras = re.findall(r"^(\w+)\s*=", section.split("\n[", 1)[0], re.M)  # 3.10: no tomllib
         named = {
             extra.strip()
-            for group in re.findall(r"pip install[^\n`]*?\.\[([^\]]+)\]", self.readme)
+            for group in re.findall(
+                r"pip install[^\n`]*?(?:\.|basedecision)\[([^\]]+)\]", self.readme
+            )
             for extra in group.split(",")
         }
         self.assertTrue(named, "the README no longer shows an install command")
+        self.assertIn('pip install "basedecision[runtime]"', self.readme)  # the PyPI form leads
         self.assertLessEqual(named, set(extras), "install extra that pyproject does not define")
 
     def test_relative_links_and_example_files_exist(self) -> None:
