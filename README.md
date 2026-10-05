@@ -12,7 +12,7 @@ print(model.backend_info())
 
 Requires Torch 2.9.1 and Transformers 4.57.6. This is explicit opt-in; the default loader and GPU calibration behavior are preserved. Without a GPU, plain `load(path)` already uses the portable CPU/FP32 path (see Hardware below); `cpu_fast` is a separate experimental opt-in. GPU calibration profiles remain workload-specific. CPU calibration is not enabled.
 
-See [CPU support and limitations](docs/CPU.md). RC5 needs the short hardware verification below before deployment; no model inference was available in the package build environment.
+See [CPU support and limitations](docs/CPU.md).
 
 # BaseDecision
 
@@ -263,20 +263,18 @@ except ProviderError as exc:
     print(exc.code, exc.retryable)  # sanitized; avoid printing provider internals
 ```
 
-## Verification and release
+## Testing
 
 ```bash
-python -m unittest discover -s tests -v
+python -m unittest discover -s tests -v          # fast tests; no model needed
+BASEDECISION_TEST_MODEL=/path/to/model python -m unittest discover -s tests -v   # + real-model tests
 ```
 
-Read `MODEL_CARD.md` for measured quality/limitations, `BENCHMARKS.md` for batching,
-and `SECURITY.md` for deployment boundaries and repository settings. `tools/`
-contains the existing HPC regression/benchmark runners; they require the research
-checkout and datasets, while the installed SDK does not.
+With a checkpoint, the tests also run this README's quickstarts and the example scripts exactly as
+written. Provider tests use mocks, so run one real call per provider with your own key before relying
+on a cloud backend.
 
-Before public publication: run the supplied CI audits, perform one live smoke
-call per provider with your own keys, verify upstream weight/data licensing,
-choose repository/package namespaces, and review the model card. Do not claim
-that this RC supports `AutoModelForCausalLM`, `.generate()`, chat completion
-endpoints, arbitrary Hugging Face architectures, or reasoning equivalent to
-Qwen/DeepSeek/Llama. It serves this decision architecture and optional cloud APIs.
+Read `MODEL_CARD.md` for measured quality and limitations, `BENCHMARKS.md` for batching, and
+`SECURITY.md` for deployment boundaries. This package serves the decision architecture and optional
+cloud APIs. It does not provide `AutoModelForCausalLM`, `.generate()`, chat-completion endpoints,
+arbitrary Hugging Face architectures, or reasoning equivalent to Qwen/DeepSeek/Llama.

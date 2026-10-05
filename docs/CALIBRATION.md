@@ -34,11 +34,3 @@ Model/encoder/tokenizer hashes and the four local inference module hashes are ve
 These results do not establish calibration for arbitrary schemas, FinEntity, long-context reasoning, unknown distributions, or cloud providers. Existing reserved data had historical project development use. This was a group-disjoint fit/selection/assessment, not a fresh external certification.
 
 `artifact='/local/calibration.json'` is supported for compatible scalar artifacts. This is a caller-supplied assessment claim, not an official endorsement; editing an artifact's acceptance field is not validation. Untrusted JSON is never executed. No fitting dependency, SciPy, model training, or network request is required at inference.
-
-Run the bounded integration smoke on your GPU host:
-
-```bash
-python tools/calibration_smoke.py \
-  --model "$BASEDECISION_DATA/runs/model" \
-  --records "$BASEDECISION_DATA/data/records.jsonl"
-```
