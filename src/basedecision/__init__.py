@@ -15,3 +15,6 @@ __all__ += ["CalibratedDecision", "CalibratedResult", "CalibrationError", "calib
 
 from .cpu import CPUFastDecision, CPUResult
 __all__ += ['CPUFastDecision','CPUResult']
+
+from .systemone import SystemOne, SystemOneError
+__all__ += ['SystemOne','SystemOneError']

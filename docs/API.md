@@ -14,6 +14,7 @@
 - `predict_iter(requests, buffer_size=64)`: bounded request buffering.
 - `count_tokens(request)`: local complete packed length; rejects over-budget inputs.
 - `result.to_dict()`: serializable output.
+- `SystemOne(model)(request_body)`: answers a Jev/SystemOne request body; see [SYSTEMONE.md](SYSTEMONE.md).
 
 Named questions use `decide(model, context=..., questions={name: schema})`. Schemas contain `kind`, `question`, optional `options`, and score-only `values`. The kind defaults to choice; noul has fixed false/true options and does not accept an options field. Unknown fields and invalid schemas are rejected before inference. Returns a dict of typed results in question order. Each question is an independent model input; this is not shared-state attention or a single-pass multi-question head.
 
@@ -23,4 +24,4 @@ Local input limit: 8192 **total packed tokens**, including question and all inta
 
 Importing the public package does not import Torch. Optional runtime/provider dependencies are imported when used. Local batch size remains 1 by default. Supported local devices: CPU/FP32 and CUDA/BF16 or FP32; packaged calibration covers CUDA/BF16 only.
 
-This is a native decision-model package. It does not implement `.generate()`, AutoModelForCausalLM, TypeScript, an HTTP service, or an autonomous agent. Its model quality must be assessed for each application.
+This is a native decision-model package. It does not implement `.generate()`, AutoModelForCausalLM, TypeScript, or an autonomous agent, and the library itself is not an HTTP service (`examples/systemone_server.py` is a small reference server for the Jev/SystemOne API). Its model quality must be assessed for each application.

@@ -25,6 +25,15 @@ request limits, concurrency/queue limits and authorization for downstream action
   debuggers, exception-local capture and provider infrastructure are outside this
   guarantee. Do not publish crash dumps or environment dumps.
 
+## SystemOne adapter and reference server
+
+`SystemOne` validates every request before inference, rejects images, unknown fields and over-long
+input instead of dropping or truncating them, bounds the work per request (`max_questions`,
+`max_state_chars`), and never puts request text into error messages. `examples/systemone_server.py`
+is a reference, not a hardened server: it binds to loopback, refuses a non-loopback address without an
+API key, caps the body size, never logs bodies, and returns JSON errors only, but TLS, rate limiting,
+quotas and multi-tenant isolation remain the deployer's responsibility.
+
 ## Repository settings to enable after creating the repository
 
 Enable branch protection, required Checks, secret scanning/push protection where
