@@ -169,6 +169,30 @@ All request schemas are checked before its first API call. Earlier successful
 calls may have been billed if a later call fails. There are no implicit fallback
 calls or repeated sampling until a preferred answer appears.
 
+## Jev / SystemOne API
+
+Requests in the Jev/SystemOne wire format (`POST /v1/systemone`: a `state` and typed `questions`,
+answered with per-option probabilities) can be answered by a local model:
+
+```python
+from basedecision import SystemOne, load
+
+service = SystemOne(load('/path/to/exported/model'))  # no GPU: load(path, device='cpu', precision='fp32')
+response = service({'model': 'basedecision',
+                    'state': 'Our checkout started returning errors and orders are blocked.',
+                    'questions': {
+                        'department': {'type': 'choice', 'instructions': 'Which team should handle it?',
+                                       'criteria': {'billing': 'Payments or invoices',
+                                                    'technical': 'Bugs or outages'}},
+                        'outage': {'type': 'noul', 'instructions': 'Is a service down?'}}})
+print(response['answers'])
+```
+
+Text only, one forward pass per question, no silent truncation, cloud providers not supported (they
+return no probabilities). `examples/systemone_server.py` serves the endpoint over HTTP (a reference,
+not a hardened server). See [Jev / SystemOne API](docs/SYSTEMONE.md) for the exact mapping, the
+differences from the reference implementation, and the error codes.
+
 ## Errors and limits
 
 - Local inputs must fit 8192 total packed tokens (or a smaller checkpoint limit),

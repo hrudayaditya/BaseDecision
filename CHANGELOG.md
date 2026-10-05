@@ -1,3 +1,12 @@
+# Unreleased
+
+- Jev/SystemOne API support: `SystemOne` / `basedecision.systemone.systemone` answer `POST /v1/systemone`
+  request bodies (choice, score and noul questions) with local models; strict validation, stable error
+  codes (`SystemOneError`), no silent truncation, images/videos rejected, cloud providers refused.
+- `examples/systemone_quickstart.py` and `examples/systemone_server.py` (reference HTTP server; auto device
+  selection), `docs/SYSTEMONE.md`.
+- No change to the hash-pinned inference modules (`client.py`, `packing.py`, `_model.py`, `types.py`).
+
 # 0.1.0rc5
 
 - Explicit experimental CPU fast backend with instance-local backbone and head attention.
