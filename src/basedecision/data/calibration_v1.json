@@ -1,0 +1,83 @@
+{
+  "version": "1",
+  "features": [
+    "intercept",
+    "normalized_entropy",
+    "log_margin_div4",
+    "log_k",
+    "log_tokens"
+  ],
+  "checkpoint": {
+    "model.safetensors": "f58f0f12978599f70a6d4956940c7d4be93c8d8a7e729f1143758718cf5cdaf6",
+    "rl_agent_config.json": "a7e52efe4a10424fc9afd8d50679e457048a8b83bc2acf14b64aaccc6bff0830",
+    "encoder/config.json": "5c887ce4335a901d15b8024f5ead2d0744eb18439da011511df5ae8f7cbf862a",
+    "tokenizer/special_tokens_map.json": "ea97ecdbcc73713039d8d64dbb05e3689495c96657fbd9a18f5bed381be81049",
+    "tokenizer/tokenizer.json": "6c8aaa9a542084f2457eab775d4eeb51f92a70c0fd9de28d5edb0ddec3c08d30",
+    "tokenizer/tokenizer_config.json": "2966a59b9e9cf122279aec1249e22e5bc7ad8430c754e95031b13fd128d4e560"
+  },
+  "sdk_version": "0.1.0rc3",
+  "sdk_contract": {
+    "client.py": "42cd8e2947893127d5d899fe43cc7fb3d2faba4c56f62b1e87ce36abd55df3c9",
+    "packing.py": "79c0555de22b57e62dc720fde4d0feada707f57bd80f3fa88b423f094a98edcb",
+    "_model.py": "f2425ae36b28c434534ba1438a5b530bf2297973b8dc9b523d07085eebfc9919",
+    "types.py": "2f73974f772a9b8ab715451962f7eaa40ec87072e41b4700ee620557361294b4"
+  },
+  "precision": "bf16",
+  "device_type": "cuda",
+  "scopes": {
+    "clinc": {
+      "method": "scalar",
+      "theta": [
+        0.4594144319881307
+      ],
+      "ridge": 0.0,
+      "optimization": "CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL",
+      "assessment_acceptable": false,
+      "min_options": 151,
+      "max_options": 151,
+      "min_tokens": 515,
+      "max_tokens": 541
+    },
+    "sgd_identifier": {
+      "method": "scalar",
+      "theta": [
+        0.3815941617911235
+      ],
+      "ridge": 0.0,
+      "optimization": "CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL",
+      "assessment_acceptable": true,
+      "min_options": 2,
+      "max_options": 3,
+      "min_tokens": 402,
+      "max_tokens": 2223
+    },
+    "sgd_schema": {
+      "method": "scalar",
+      "theta": [
+        0.39155340477474104
+      ],
+      "ridge": 0.0,
+      "optimization": "CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL",
+      "assessment_acceptable": true,
+      "min_options": 2,
+      "max_options": 3,
+      "min_tokens": 411,
+      "max_tokens": 2247
+    },
+    "vast": {
+      "method": "scalar",
+      "theta": [
+        0.007035070619613097
+      ],
+      "ridge": 0.0,
+      "optimization": "CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL",
+      "assessment_acceptable": true,
+      "min_options": 3,
+      "max_options": 3,
+      "min_tokens": 79,
+      "max_tokens": 265
+    }
+  },
+  "source_sha256": "ce901f249d2fda4049bf9eb38959a2c98bf30befabf69b8edf3562c17d392e0a",
+  "logits_sha256": "e083d22d28b9b30104f78794bed2e7d230daab69193d3297e6f5d6e287b412ba"
+}

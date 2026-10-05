@@ -1,0 +1,43 @@
+# --- Python build / cache artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# --- Virtual environments
+.venv/
+venv/
+env/
+
+# --- Editors, notebooks, OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+.ipynb_checkpoints/
+
+# --- Secrets: never commit credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Model weights and datasets are distributed separately; never commit them
+*.safetensors
+*.pt
+*.pth
+*.bin
+*.ckpt
+*.onnx
+*.gguf

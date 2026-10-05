@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "basedecision"
+version = "0.1.0rc5"
+description = "Native typed decisions with complete-input packing and bounded batching"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+authors = [{name = "Aditya"}]
+dependencies = []
+
+[project.optional-dependencies]
+openai = ["openai>=2.54,<3"]
+anthropic = ["anthropic>=0.125,<1"]
+hub = ["huggingface-hub>=0.34,<2"]
+providers = ["openai>=2.54,<3", "anthropic>=0.125,<1"]
+runtime = ["torch>=2.6,<3", "transformers>=4.48,<5", "safetensors>=0.4", "tokenizers>=0.21"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools]
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
+
+[tool.setuptools.package-data]
+basedecision = ["py.typed", "data/*.json"]

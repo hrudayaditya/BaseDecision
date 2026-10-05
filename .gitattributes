@@ -1,0 +1,5 @@
+# Normalize line endings; keep binaries untouched.
+* text=auto eol=lf
+*.whl binary
+*.safetensors binary
+*.png binary
