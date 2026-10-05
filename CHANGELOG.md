@@ -9,6 +9,11 @@
 
 ## Fixed
 
+- First run without an NVIDIA GPU: `load(path)`, the README quickstart and the examples crashed with
+  `CUDA is unavailable`. `load()` now chooses CUDA/BF16 when a GPU with native BF16 is present and CPU/FP32
+  otherwise (`resolve_device()`); explicit `device`/`precision` are never overridden. The inference modules
+  keep their CUDA/BF16 defaults, so `BaseDecision.from_pretrained` stays strict.
+
 - OpenAI backend raised a raw `TypeError` on any response containing a reasoning item (every
   reasoning model returns one). Provider responses are now normalized to plain data and handled by one
   closed, total policy (`basedecision/_wire.py`): reasoning items and Anthropic thinking blocks are
@@ -17,6 +22,10 @@
 - Unpickling a `ProviderError` doubled its message prefix.
 
 ## Added
+
+- `load_from_hub(repo_id, revision=...)`: explicit Hub download with the same machine-appropriate defaults;
+  `resolve_device()`; `--device`/`--precision` flags in all example scripts; a Hardware section in the README
+  with measured CPU timings and memory.
 
 - Error codes `output_budget_exhausted` (reasoning consumed `max_output_tokens`) and `content_filtered`;
   `ProviderError.detail` (safe API identifier); `usage['reasoning_tokens']`;

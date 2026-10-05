@@ -10,7 +10,7 @@ print(result.to_dict())
 print(model.backend_info())
 ```
 
-Requires Torch 2.9.1 and Transformers 4.57.6. This is explicit opt-in; the default loader and GPU calibration behavior are preserved. For the portable reference CPU path use `load(path, device='cpu', precision='fp32')`. GPU calibration profiles remain workload-specific. CPU calibration is not enabled.
+Requires Torch 2.9.1 and Transformers 4.57.6. This is explicit opt-in; the default loader and GPU calibration behavior are preserved. Without a GPU, plain `load(path)` already uses the portable CPU/FP32 path (see Hardware below); `cpu_fast` is a separate experimental opt-in. GPU calibration profiles remain workload-specific. CPU calibration is not enabled.
 
 See [CPU support and limitations](docs/CPU.md). RC5 needs the short hardware verification below before deployment; no model inference was available in the package build environment.
 
@@ -50,7 +50,7 @@ Python 3.12, Torch 2.9.1+cu126, Transformers 4.57.6, A100-SXM4-80GB, BF16 autoca
 ```python
 from basedecision import load, decide
 
-model = load('/path/to/exported/model')
+model = load('/path/to/exported/model')   # uses a GPU if there is one, otherwise the CPU
 answers = decide(model, context='Please refund the duplicate payment.', questions={
     'intent': {'kind': 'choice', 'question': 'What does the customer request?',
                'options': ['Refund request', 'Delivery status', 'Other request']},
@@ -63,6 +63,28 @@ Each question is evaluated independently. No definitions are required for plain 
 The existing `choose`, `check`, `score` and batch interfaces remain available.
 See [Python API](docs/API.md), [calibration coverage](docs/CALIBRATION.md), and the
 runnable `examples/python_quickstart.py`.
+
+## Hardware: it runs on a laptop
+
+`load()` and `load_from_hub()` choose what works on your machine: **CUDA with BF16** when an
+NVIDIA GPU with native BF16 is present (the configuration the model was measured on),
+otherwise **CPU with FP32**. No flags are needed, and `model.device` / `model.precision` tell you
+what was picked. Override with `load(path, device='cpu', precision='fp32')` or
+`device='cuda'`; an explicit choice is never second-guessed, so `device='cuda'` without a
+GPU is an error. Apple-silicon Macs run on the CPU (Metal/MPS is not supported).
+
+Measured on one 10-core Apple-silicon laptop, FP32 on the CPU (a rough guide, not a benchmark):
+
+| Request length | Time per decision | Peak memory |
+|---|---:|---:|
+| short (a few dozen tokens) | ~0.05 s | ~2 GiB |
+| 512 tokens | ~0.4 s | ~2 GiB |
+| 4,096 tokens | ~8 s | ~5 GiB |
+| 8,191 tokens (the limit) | ~30 s | ~8 GiB |
+
+Loading takes about 10 s and needs ~2 GiB of RAM for the 1.7 GB of weights. Batching mixed-length
+requests is slower than one at a time on a CPU. The experimental `cpu_fast` backend was developed on an
+Intel Xeon server and was 10-15x *slower* than this default on the laptop above.
 
 ## Reviewed calibration
 
@@ -88,9 +110,9 @@ quality evaluation is claimed for this packaging change.
 ## Local inference
 
 ```python
-from basedecision import BaseDecision
+from basedecision import load
 
-model = BaseDecision.from_pretrained('/path/to/exported/model')
+model = load('/path/to/exported/model')
 result = model.choose(
     context='Please refund this purchase.',
     question='What does the customer request?',
@@ -100,13 +122,18 @@ print(result.answer)
 print(result.probabilities)  # raw, uncalibrated softmax
 ```
 
+`BaseDecision.from_pretrained(path)` is the explicit low-level constructor: it defaults to
+CUDA/BF16 and fails on machines without that. Use `load()` unless you want that strictness.
+
 For a published checkpoint, download explicitly:
 
 ```python
-model = BaseDecision.from_hub('YOUR_NAMESPACE/YOUR_MODEL', revision='YOUR_REVISION')
+from basedecision import load_from_hub
+
+model = load_from_hub('YOUR_NAMESPACE/YOUR_MODEL', revision='YOUR_REVISION')
 ```
 
-Replace the placeholders with an actual repository and revision. Authentication
+Replace the placeholders with an actual repository and revision (a commit hash pins the exact weights). Authentication
 uses standard Hugging Face configuration; no token is embedded in code. Use
 `local_files_only=True` for cached-only loading. No remote Python is executed.
 
@@ -187,7 +214,7 @@ answered with per-option probabilities) can be answered by a local model:
 ```python
 from basedecision import SystemOne, load
 
-service = SystemOne(load('/path/to/exported/model'))  # no GPU: load(path, device='cpu', precision='fp32')
+service = SystemOne(load('/path/to/exported/model'))  # GPU if available, else CPU
 response = service({'model': 'basedecision',
                     'state': 'Our checkout started returning errors and orders are blocked.',
                     'questions': {

@@ -7,7 +7,7 @@ Jev/SystemOne service accepts (`POST /v1/systemone`) works with a local BaseDeci
 ```python
 from basedecision import SystemOne, load
 
-service = SystemOne(load("/path/to/model"))        # or load(..., device="cpu", precision="fp32")
+service = SystemOne(load("/path/to/model"))        # GPU if available, otherwise the CPU
 response = service({
     "model": "basedecision",
     "state": "Our checkout started returning errors and orders are blocked.",
