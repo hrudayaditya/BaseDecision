@@ -15,16 +15,20 @@ import math
 import os
 import pickle
 import random
+import re
 import sys
+import tempfile
 import types
 import unittest
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from typing import Any, get_args
 from unittest.mock import patch
 
 import basedecision
 from basedecision import (
     BaseDecision,
+    CalibratedDecision,
     ContextLengthError,
     InputError,
     Option,
@@ -33,6 +37,7 @@ from basedecision import (
     SystemOne,
     SystemOneError,
 )
+from basedecision.calibration import _DATA, _sha
 from basedecision.systemone import ErrorCode, parse_request_body, systemone
 
 REFERENCE_REQUEST: dict[str, Any] = {
@@ -642,6 +647,60 @@ class BackendTests(unittest.TestCase):
         self.assertEqual(got, expected)
 
 
+class CalibratedBackendTests(unittest.TestCase):
+    """``CalibratedDecision`` (choice-only) works as a backend and returns calibrated values."""
+
+    def setUp(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        artifact = json.loads(_DATA.read_text())
+        artifact["checkpoint"] = {}
+        for name in (
+            "model.safetensors",
+            "rl_agent_config.json",
+            "encoder/config.json",
+            "tokenizer/tokenizer.json",
+        ):
+            path = root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("{}")
+            artifact["checkpoint"][name] = _sha(path)
+        artifact["scopes"]["sgd_identifier"].update(
+            min_tokens=1, max_tokens=1000, min_options=2, max_options=3
+        )
+        artifact_path = root / "calibration.json"
+        artifact_path.write_text(json.dumps(artifact))
+
+        class CudaScripted(ScriptedBackend):
+            precision = "bf16"
+            device = types.SimpleNamespace(type="cuda")
+
+        self.raw = CudaScripted(lambda request: [0.0, 4.0][: len(request.options)])
+        self.raw.model_id = str(root)
+        calibrated = CalibratedDecision(self.raw, profile="sgd_identifier", artifact=artifact_path)
+        self.service = SystemOne(calibrated)
+
+    def test_choice_answers_are_calibrated_and_keep_the_decision(self) -> None:
+        body = {
+            "model": "m",
+            "state": "s",
+            "questions": {"q": {"type": "choice", "criteria": {"a": "first", "b": "second"}}},
+        }
+        answer = self.service(body)["answers"]["q"]
+        raw = self.raw.predict_batch(self.raw.calls[-1])[0]
+        self.assertEqual(answer["choice"], raw.option_id)
+        self.assertLess(answer["confidence"], round(raw.probabilities[raw.option_id], 4))
+        self.assertAlmostEqual(sum(answer["probabilities"].values()), 1.0, delta=2e-4)
+
+    def test_boolean_and_score_questions_are_refused_with_a_clear_message(self) -> None:
+        for question in ({"type": "noul"}, {"type": "score", "criteria": ["lo", "hi"]}):
+            with self.subTest(question["type"]), self.assertRaises(SystemOneError) as ctx:
+                self.service({"model": "m", "state": "s", "questions": {"q": question}})
+            self.assertEqual(ctx.exception.code, "invalid_request")
+            self.assertIn("choice only", str(ctx.exception))
+
+
 class ErrorObjectTests(unittest.TestCase):
     def test_is_an_input_error_and_a_value_error(self) -> None:
         self.assertTrue(issubclass(SystemOneError, InputError))
@@ -930,6 +989,30 @@ class RealModelTests(unittest.TestCase):
         self.assertEqual(
             sorted(first["probabilities"].items()), sorted(second["probabilities"].items())
         )
+
+    def test_documentation_snippets_run(self) -> None:
+        """The SystemOne code in the README and docs executes and returns an answers dict."""
+        root = Path(__file__).resolve().parents[1]
+        sources = {
+            "docs/SYSTEMONE.md": (root / "docs" / "SYSTEMONE.md").read_text(),
+            "README.md": (root / "README.md").read_text().split("## Jev / SystemOne API", 1)[-1],
+        }
+        for name, text in sources.items():
+            block = re.search(r"```python\n(.*?)```", text, re.S)
+            self.assertIsNotNone(block, name)
+            code = re.sub(
+                r"load\(['\"]/path/to/[^'\"]*['\"](?:,[^)]*)?\)",
+                "load(MODEL, device=DEVICE, precision=PRECISION)",
+                block.group(1),  # type: ignore[union-attr]
+            )
+            namespace: dict[str, Any] = {
+                "MODEL": os.environ["BASEDECISION_TEST_MODEL"],
+                "DEVICE": os.environ.get("BASEDECISION_TEST_DEVICE", "cpu"),
+                "PRECISION": os.environ.get("BASEDECISION_TEST_PRECISION", "fp32"),
+            }
+            with self.subTest(name):
+                exec(compile(code, name, "exec"), namespace)  # noqa: S102
+                self.assertIn("answers", namespace["response"])
 
     def test_oversized_state_is_rejected_not_truncated(self) -> None:
         body = {"model": "m", "state": "word " * 20000, "questions": {"q": {"type": "noul"}}}
