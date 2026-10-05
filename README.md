@@ -140,6 +140,16 @@ label or generated confidence into a probability distribution. `usage` reports
 provider input/output token counts when available. Provider limits differ from
 the local model; the byte-size guard does not claim an exact provider token count.
 
+**Reasoning models.** Responses that contain reasoning items (OpenAI) or thinking
+blocks (Anthropic) are supported: that deliberation is ignored, only the structured
+decision is used, and OpenAI's hidden reasoning tokens are reported as
+`usage['reasoning_tokens']` (they are billed and count against `max_output_tokens`).
+If a model spends its whole output budget before answering you get the error code
+`output_budget_exhausted`: raise `max_output_tokens` or, for OpenAI reasoning models,
+lower the effort with `from_provider('openai', model, reasoning_effort='low')`
+(sent as `reasoning.effort`; the option is only valid for reasoning models). Tool
+calls and unknown item types are rejected (`unexpected_output_block`), never guessed at.
+
 ## Boolean, scores, and batching
 
 ```python
@@ -204,7 +214,9 @@ differences from the reference implementation, and the error codes.
   structured inputs explicitly. Option IDs and descriptions must be distinct.
 - Provider errors expose `code`, `retryable`, and `status_code` without returning
   upstream bodies. Codes include authentication/permission, rate limit, timeout,
-  request rejection, refusal, incomplete output and invalid selection.
+  request rejection, refusal, incomplete output, `output_budget_exhausted`,
+  `content_filtered`, `unexpected_output_block` and invalid selection. An optional
+  `detail` names the offending item type (an API identifier, never response text).
 - The official SDK owns retries (default 2, configurable 0–5). There is no second
   retry loop in BaseDecision. Timeout is a request timeout, not a total batch or
   retry wall-clock deadline. Retries can increase elapsed time and request costs.
