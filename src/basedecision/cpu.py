@@ -1,6 +1,7 @@
 """Explicit experimental CPU BF16 inference; no process-wide tuning."""
 from dataclasses import dataclass, asdict
 import warnings
+from ._cpu_selftest import CPUFastUnavailable,verify,version_problem
 from .client import BaseDecision
 from .types import Result,InputError
 
@@ -17,9 +18,12 @@ class CPUFastDecision(BaseDecision):
     def __init__(self,path,*,device='cpu',precision='bf16',max_batch_size=1,max_batch_tokens=8192):
         if device!='cpu' or precision!='bf16':raise InputError('cpu_fast requires device="cpu", precision="bf16"')
         import torch,transformers
-        if transformers.__version__!='4.57.6' or torch.__version__.split('+')[0]!='2.9.1':
-            raise InputError('Experimental cpu_fast requires torch 2.9.1 and transformers 4.57.6; use the default CPU FP32 backend otherwise')
+        problem=version_problem(torch.__version__,transformers.__version__)
+        if problem:raise CPUFastUnavailable(problem)  # instantly, before any weights are loaded
         super().__init__(path,device='cpu',precision='fp32',max_batch_size=max_batch_size,max_batch_tokens=max_batch_tokens)
+        # Prove the fast path works on THIS installation (known-answer test on a tiny model with this
+        # checkpoint's attention geometry) before it is used. Raises CPUFastUnavailable otherwise.
+        self._verification=verify(self._model.encoder.config)
         from ._cpu_attention import install,install_head
         self._cpu_counters=install(self._model);install_head(self._model)
         self.inference_precision='bf16_autocast_fp32_weights'
@@ -37,4 +41,6 @@ class CPUFastDecision(BaseDecision):
             return dict(backend='cpu_fast_experimental',device='cpu',weight_precision=self.precision,
                 inference_precision=self.inference_precision,calibration_supported=False,
                 attention_calls=dict(self._cpu_counters),threads=self._torch.get_num_threads(),
+                self_test=dict(torch=self._verification.torch,transformers=self._verification.transformers,
+                    seconds=round(self._verification.seconds,3),relative_difference=float(f'{self._verification.relative_difference:.3g}')),
                 fallback='Original backbone attention for padded/batched/global attention; CPU BF16 head retained')

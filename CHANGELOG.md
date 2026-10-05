@@ -12,6 +12,16 @@
   in `calibration_v1.json` were refreshed accordingly; the GPU quality assessment behind the calibration
   profiles was not repeated for this change.
 
+## Changed
+
+- `cpu_fast` no longer requires exactly torch 2.9.1 and transformers 4.57.6 (which forced a specific, and
+  security-advisory-laden, install). It accepts torch >= 2.6 with transformers 4.48-4.57 and verifies itself
+  on the installed versions at load time with a short known-answer self-test (strict in FP32: a correct
+  adapter agrees to ~1e-7 and a 1% error is caught; plus a BF16 pass), changing no global state. Outside the
+  range or on a failed self-test it raises `CPUFastUnavailable` (an `InputError`) with advice, never
+  silently falling back. `backend_info()` gains `self_test`. Verified with the real checkpoint on torch
+  2.6.0/transformers 4.48.0, 2.9.1/4.57.6 and 2.14.1/4.57.6; refused cleanly on transformers 5.18.
+
 ## Removed
 
 - `tools/` (the HPC regression, GPU benchmark, calibration-smoke and `cpu_fast` verification runners, which
