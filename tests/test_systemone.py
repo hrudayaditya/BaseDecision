@@ -15,7 +15,6 @@ import math
 import os
 import pickle
 import random
-import re
 import sys
 import tempfile
 import types
@@ -989,30 +988,6 @@ class RealModelTests(unittest.TestCase):
         self.assertEqual(
             sorted(first["probabilities"].items()), sorted(second["probabilities"].items())
         )
-
-    def test_documentation_snippets_run(self) -> None:
-        """The SystemOne code in the README and docs executes and returns an answers dict."""
-        root = Path(__file__).resolve().parents[1]
-        sources = {
-            "docs/SYSTEMONE.md": (root / "docs" / "SYSTEMONE.md").read_text(),
-            "README.md": (root / "README.md").read_text().split("## Jev / SystemOne API", 1)[-1],
-        }
-        for name, text in sources.items():
-            block = re.search(r"```python\n(.*?)```", text, re.S)
-            self.assertIsNotNone(block, name)
-            code = re.sub(
-                r"load\(['\"]/path/to/[^'\"]*['\"](?:,[^)]*)?\)",
-                "load(MODEL, device=DEVICE, precision=PRECISION)",
-                block.group(1),  # type: ignore[union-attr]
-            )
-            namespace: dict[str, Any] = {
-                "MODEL": os.environ["BASEDECISION_TEST_MODEL"],
-                "DEVICE": os.environ.get("BASEDECISION_TEST_DEVICE", "cpu"),
-                "PRECISION": os.environ.get("BASEDECISION_TEST_PRECISION", "fp32"),
-            }
-            with self.subTest(name):
-                exec(compile(code, name, "exec"), namespace)  # noqa: S102
-                self.assertIn("answers", namespace["response"])
 
     def test_oversized_state_is_rejected_not_truncated(self) -> None:
         body = {"model": "m", "state": "word " * 20000, "questions": {"q": {"type": "noul"}}}

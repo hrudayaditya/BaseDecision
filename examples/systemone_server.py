@@ -196,18 +196,6 @@ def make_server(
     return Server((host, port), Handler)
 
 
-def default_device() -> tuple[str, str]:
-    """Return (device, precision): CUDA/BF16 when available, else CPU/FP32."""
-    try:
-        import torch
-
-        if torch.cuda.is_available():
-            return "cuda", "bf16"
-    except ImportError:
-        pass
-    return "cpu", "fp32"
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--model", required=True, help="path to the exported checkpoint")
@@ -240,8 +228,7 @@ def main() -> None:
 
     from basedecision import load
 
-    device, precision = default_device()
-    model = load(args.model, device=args.device or device, precision=args.precision or precision)
+    model = load(args.model, device=args.device or "auto", precision=args.precision)
     service = SystemOne(model, accepted_models=args.served, max_questions=args.max_questions)
     server = make_server(
         service, args.host, args.port, api_key=api_key, max_body_bytes=args.max_body_bytes
