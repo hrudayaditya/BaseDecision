@@ -154,6 +154,9 @@ class ReadmeStructureTests(unittest.TestCase):
             "**Behind on two:**",
         ):
             self.assertIn(claim, self.readme)
+        for baseline in ("GLiNER 2.5 base", "GLiNER2.5-Decide", "Decision 1.0 Kai 0.6B", "Laya"):
+            self.assertIn(baseline, self.readme)  # the models the image compares against
+        self.assertNotIn("…", self.readme, "a truncated placeholder name is left in the README")
 
     def test_first_example_is_the_short_first_run(self) -> None:
         first = python_blocks(self.readme)[0]

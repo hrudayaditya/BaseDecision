@@ -46,8 +46,8 @@ texts. No flags are needed.
 
 ## How it performs
 
-BaseDecision against GLiNER 2.5 base, Laya and two further baselines on eight benchmarks (higher is
-better):
+BaseDecision against GLiNER 2.5 base, GLiNER2.5-Decide, Decision 1.0 Kai 0.6B and Laya on eight
+benchmarks (higher is better):
 
 ![BaseDecision has the highest average score, 57.6 against 38.6 to 41.6, and is ahead on five of eight benchmarks: BANKING77, FinEntity, ContractNLI, VAST and SGD/SGD-X. It is behind on MuSR and NLI4CT, and all models score about 50 on PhishNChips.](https://raw.githubusercontent.com/hrudayaditya/BaseDecision/main/docs/assets/benchmarks.png)
 
