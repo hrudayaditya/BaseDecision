@@ -1,5 +1,7 @@
 # CPU support
 
+No flag is needed to run without a GPU: `load(path)` (and `load_from_hub(...)`) automatically use the portable CPU/FP32 path when no suitable CUDA GPU is present. This page is about the separate, experimental `cpu_fast` backend.
+
 `load(path, backend='cpu_fast')` selects experimental BF16 autocast with FP32 weights and tiled local backbone attention. `CPUFastDecision.from_pretrained` and `.from_hub` are also available. OpenAI/Anthropic adapters and default local inference are unchanged.
 
 The implementation patches only this model instance's attention methods. It never changes the Transformers attention registry, PyTorch MHA switch, thread counts, affinity, environment variables, or weights. An instance serializes its own requests with the existing SDK lock. Different instances share hardware resources but not optimization settings.

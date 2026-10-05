@@ -10,8 +10,9 @@ from .providers import ProviderResult
 __all__ += ['ProviderError', 'ProviderResponseError', 'ProviderResult']
 
 from .calibration import CalibratedDecision, CalibratedResult, CalibrationError, calibration_profiles
-from .api import load, decide
-__all__ += ["CalibratedDecision", "CalibratedResult", "CalibrationError", "calibration_profiles", "load", "decide"]
+from .api import load, load_from_hub, decide
+from .devices import resolve_device
+__all__ += ["CalibratedDecision", "CalibratedResult", "CalibrationError", "calibration_profiles", "load", "load_from_hub", "decide", "resolve_device"]
 
 from .cpu import CPUFastDecision, CPUResult
 __all__ += ['CPUFastDecision','CPUResult']

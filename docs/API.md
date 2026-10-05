@@ -1,8 +1,8 @@
 # Python API
 
-`load(local_path, device='cuda', precision='bf16', ...)` loads a local exported checkpoint. Equivalent to `BaseDecision.from_pretrained`. Pass `calibration_profile='sgd_schema'` only when all requests belong to that assessed scope. For mixed workloads, keep the raw client and wrap it separately.
+`load(local_path, device=None, precision=None, ...)` loads a local exported checkpoint. `device` and `precision` default to what works on the machine: CUDA/BF16 when a GPU with native BF16 is present, otherwise CPU/FP32 (`resolve_device()` returns that choice). Explicit values are used as given. `BaseDecision.from_pretrained` is the strict low-level constructor and defaults to CUDA/BF16. Pass `calibration_profile='sgd_schema'` only when all requests belong to that assessed scope. For mixed workloads, keep the raw client and wrap it separately.
 
-`BaseDecision.from_hub(repo_id, revision=..., ...)` explicitly downloads a supported checkpoint. No remote Python code is executed. Actual published checkpoint namespace is still to be assigned.
+`load_from_hub(repo_id, revision=..., ...)` explicitly downloads a supported checkpoint and loads it with the same machine-appropriate defaults (`BaseDecision.from_hub` is the strict variant). No remote Python code is executed. Actual published checkpoint namespace is still to be assigned.
 
 `BaseDecision.from_provider('openai'|'anthropic', model_id, ...)` explicitly opts into cloud inference. Context managers close clients. No automatic cloud fallback. Provider results do not include fabricated probabilities.
 

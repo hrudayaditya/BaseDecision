@@ -26,26 +26,13 @@ REQUEST = {
 }
 
 
-def default_device() -> tuple[str, str]:
-    """Return (device, precision): CUDA/BF16 when available, else CPU/FP32."""
-    try:
-        import torch
-
-        if torch.cuda.is_available():
-            return "cuda", "bf16"
-    except ImportError:
-        pass
-    return "cpu", "fp32"
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--model", required=True, help="path to the exported checkpoint")
     parser.add_argument("--device", choices=["cpu", "cuda"])
     parser.add_argument("--precision", choices=["fp32", "bf16"])
     args = parser.parse_args()
-    device, precision = default_device()
-    model = load(args.model, device=args.device or device, precision=args.precision or precision)
+    model = load(args.model, device=args.device or "auto", precision=args.precision)
     service = SystemOne(model)
     try:
         response = service(REQUEST)
