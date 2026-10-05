@@ -59,6 +59,7 @@ README_OUTPUT = {
     "device='cpu', precision='fp32'": ["cpu fp32"],
     "SystemOne(model)": ["technical"],
     "count_tokens": ["22\n", "20014 8192"],
+    "scratch.check(": ["True\nTrue"],
 }
 
 

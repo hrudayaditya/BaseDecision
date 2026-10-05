@@ -225,6 +225,18 @@ curl -s localhost:8080/v1/systemone -H 'Content-Type: application/json' \
 Text only, one forward pass per question, no truncation, and no cloud providers (they return no
 probabilities).
 
+### Free the memory when you are done: `close`
+
+```python
+with load('/path/to/model') as scratch:     # the weights are freed when the block ends
+    print(scratch.check(context='The account is active.', question='Is the account active?').answer)   # True
+print(scratch.closed)   # True: asking a closed model for an answer raises InputError
+```
+
+`model.close()` does the same without a `with` block, and is safe to call twice. It waits for a request
+that is running, then frees the weights and, on a GPU, the memory they held. The cloud backend and
+`cpu_fast` models work the same way.
+
 ## Limits and errors
 
 ```python

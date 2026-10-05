@@ -14,6 +14,17 @@
 
 ## Changed
 
+- Typing and documentation. The whole package is now typed: `mypy --strict` passes (configuration in
+  `pyproject.toml`, run `mypy`), including on machines where Torch, Transformers and the provider SDKs are
+  not installed, and every public class, function and method has a docstring. `tests/test_api_quality.py`
+  enforces both. For users of the typed API: `load()` / `load_from_hub()` return the precise type
+  (`BaseDecision`, `CPUFastDecision` for `backend='cpu_fast'`, `CalibratedDecision` when a profile is
+  given), `Request.kind` / `Result.kind` are the literal `choice | noul | score`, `calibration_profiles()`
+  returns `ProfileInfo` dictionaries, and the convenience methods return the right result type on the
+  local model and on the cloud backend. Runtime behaviour is unchanged. The four pinned modules differ from
+  the previous commit only in annotations, docstrings and typing imports (checked by comparing their syntax
+  trees with those removed), 120 real-model predictions remain bit-identical to the original baseline, and
+  the `sdk_contract` hashes were refreshed.
 - `cpu_fast` no longer requires exactly torch 2.9.1 and transformers 4.57.6 (which forced a specific, and
   security-advisory-laden, install). It accepts torch >= 2.6 with transformers 4.48-4.57 and verifies itself
   on the installed versions at load time with a short known-answer self-test (strict in FP32: a correct
@@ -76,9 +87,15 @@
 
 ## Added
 
+- `close()`, `closed` and context-manager support on local models (`BaseDecision`, `CPUFastDecision`,
+  `CalibratedDecision`); the cloud backend gains `closed`. `close()` waits for a running request, releases
+  the network and tokenizer (and empties the CUDA cache), and is idempotent; afterwards request methods
+  raise `InputError`. `with load(path) as model:` is the idiomatic form. `load(..., calibration_profile=...)`
+  closes the model it loaded if calibration cannot be applied, instead of leaving it in memory. Changes
+  `client.py` (the `sdk_contract` hash was refreshed); no inference code changed.
 - `load_from_hub(repo_id, revision=...)`: explicit Hub download with the same machine-appropriate defaults;
-  `resolve_device()`; `--device`/`--precision` flags in all example scripts; a Hardware section in the README
-  with measured CPU timings and memory.
+  `resolve_device()`; `--device`/`--precision` flags in all example scripts; CPU timings and memory in the
+  README's "Force the CPU or the GPU" example.
 
 - Error codes `output_budget_exhausted` (reasoning consumed `max_output_tokens`) and `content_filtered`;
   `ProviderError.detail` (safe API identifier); `usage['reasoning_tokens']`;
