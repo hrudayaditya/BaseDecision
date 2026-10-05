@@ -12,20 +12,21 @@ provider acceptance is pending.
 ## Install
 
 ```bash
-pip install ".[runtime]"    # run this inside this folder; needs Python 3.10+
+pip install "basedecision[runtime]"    # needs Python 3.10+
 ```
 
-That is all for local use (the first-time download of Torch is large). Not on PyPI yet.
+That is all for local use (the first-time download of Torch is large).
 
 | I want to... | Install |
 |---|---|
-| Run the model on my machine (CPU or NVIDIA GPU; Apple-silicon Macs use the CPU) | `pip install ".[runtime]"` |
-| ...and download the model from Hugging Face | `pip install ".[runtime,hub]"` |
-| Use OpenAI or Anthropic only, no Torch | `pip install ".[providers]"` |
+| Run the model on my machine (CPU or NVIDIA GPU; Apple-silicon Macs use the CPU) | `pip install "basedecision[runtime]"` |
+| ...and download the model from Hugging Face | `pip install "basedecision[runtime,hub]"` |
+| Use OpenAI or Anthropic only, no Torch | `pip install "basedecision[providers]"` |
 
 Already have Torch 2.6+ and Transformers 4.48-4.57 and want pip to leave them alone?
-`pip install --no-deps .` installs only BaseDecision. Nothing is ever installed behind your back: a
-missing package gives an error that says which extra to install.
+`pip install --no-deps basedecision` installs only BaseDecision. Nothing is ever installed behind your
+back: a missing package gives an error that says which extra to install. Working from a clone of the
+repository instead? Run `pip install ".[runtime]"` inside it.
 
 ## Try it
 
@@ -41,9 +42,29 @@ print(result.probabilities)   # Refund is about 0.99999, the other two about 0.0
 ```
 
 Loading takes about 8 s and ~2 GiB of RAM; each answer takes about 0.05 s on a laptop CPU for short
-texts. No flags are needed. The examples below reuse this `model`.
+texts. No flags are needed.
+
+## How it performs
+
+BaseDecision against GLiNER 2.5 base, Laya and two further baselines on eight benchmarks (higher is
+better):
+
+![BaseDecision has the highest average score, 57.6 against 38.6 to 41.6, and is ahead on five of eight benchmarks: BANKING77, FinEntity, ContractNLI, VAST and SGD/SGD-X. It is behind on MuSR and NLI4CT, and all models score about 50 on PhishNChips.](docs/assets/benchmarks.png)
+
+- **Highest average:** 57.6, against 38.6 to 41.6 for the other four models (the unweighted mean of
+  the eight benchmarks).
+- **Ahead on five benchmarks:** BANKING77, FinEntity, ContractNLI, VAST and SGD/SGD-X, by 1.2 to 30.2
+  points. The largest gaps are on ContractNLI and VAST.
+- **Behind on two:** MuSR (44.6 against 45.2) and NLI4CT (42.3 against 48.0).
+- **PhishNChips does not separate the models:** all five score between 49.9 and 50.4.
+
+Treat this as a guide, not a guarantee. How a decision model does depends on the task and the wording
+of its questions, so try it on a sample of your own before relying on it. The probabilities it returns
+are raw softmax values, not calibrated confidence (see [Calibration](docs/CALIBRATION.md)).
 
 ## Examples
+
+These examples reuse the `model` from above.
 
 ### Yes or no: `check`
 
@@ -114,7 +135,7 @@ print(model.choose(context='Please refund my purchase.', question='What is reque
 
 ### Download the model from Hugging Face: `load_from_hub`
 
-Needs `pip install ".[runtime,hub]"`. The repository name is a placeholder until the model is published.
+Needs `pip install "basedecision[runtime,hub]"`. The repository name is a placeholder until the model is published.
 
 ```python
 from basedecision import load_from_hub
@@ -162,7 +183,7 @@ so measure before you use it. See [CPU support and limitations](docs/CPU.md).
 ### OpenAI or Anthropic instead of the local model
 
 ```bash
-export OPENAI_API_KEY=...     # or ANTHROPIC_API_KEY; needs: pip install ".[providers]"
+export OPENAI_API_KEY=...     # or ANTHROPIC_API_KEY; needs: pip install "basedecision[providers]"
 ```
 
 ```python
@@ -213,8 +234,8 @@ response = service({'model': 'basedecision',
 print(response['answers']['department']['choice'])   # technical
 ```
 
-Or serve it over HTTP (a reference server, bound to localhost; see
-[docs/SYSTEMONE.md](docs/SYSTEMONE.md) before exposing it):
+Or serve it over HTTP with the reference server in the repository's `examples/` folder (bound to
+localhost; see [docs/SYSTEMONE.md](docs/SYSTEMONE.md) before exposing it):
 
 ```bash
 python examples/systemone_server.py --model /path/to/model
@@ -264,10 +285,12 @@ except InputError as error:                              # bad options, wrong ty
 
 - [Python API reference](docs/API.md) · [Calibration](docs/CALIBRATION.md) · [CPU mode](docs/CPU.md) ·
   [Cloud backends](docs/CLOUD.md) · [Jev / SystemOne](docs/SYSTEMONE.md)
-- [Model card](MODEL_CARD.md) (quality and limitations) · [Benchmarks](BENCHMARKS.md) ·
-  [Security](SECURITY.md) · [Changelog](CHANGELOG.md) · [Contributing](CONTRIBUTING.md)
-- Runnable scripts: `examples/python_quickstart.py`, `examples/decide.py`,
-  `examples/systemone_quickstart.py`, `examples/systemone_server.py`.
+- [Benchmarks](BENCHMARKS.md) · [Security](SECURITY.md) · [Changelog](CHANGELOG.md) ·
+  [Contributing](CONTRIBUTING.md)
+- Runnable scripts, in the repository's `examples/` folder: `python_quickstart.py`, `decide.py`,
+  `systemone_quickstart.py`, `systemone_server.py`.
+
+From a clone of the repository, to run the tests:
 
 ```bash
 python -m unittest discover -s tests -v                                          # no model needed
@@ -281,3 +304,9 @@ for syntax and imports.
 BaseDecision is a decision model (ModernBERT-large encoder with a typed decision head, 8,192-token
 window). It has no `.generate()`, no `AutoModelForCausalLM`, no chat endpoint, and no reasoning
 comparable to a general chat model.
+
+---
+
+## License
+
+Apache 2.0. Developed by Hrudayaditya "Aady" Jallu.

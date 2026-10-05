@@ -16,6 +16,7 @@ import io
 import json
 import os
 import re
+import struct
 import subprocess
 import sys
 import unittest
@@ -90,10 +91,13 @@ class ReadmeStructureTests(unittest.TestCase):
         extras = re.findall(r"^(\w+)\s*=", section.split("\n[", 1)[0], re.M)  # 3.10: no tomllib
         named = {
             extra.strip()
-            for group in re.findall(r"pip install[^\n`]*?\.\[([^\]]+)\]", self.readme)
+            for group in re.findall(
+                r"pip install[^\n`]*?(?:\.|basedecision)\[([^\]]+)\]", self.readme
+            )
             for extra in group.split(",")
         }
         self.assertTrue(named, "the README no longer shows an install command")
+        self.assertIn('pip install "basedecision[runtime]"', self.readme)  # the PyPI form leads
         self.assertLessEqual(named, set(extras), "install extra that pyproject does not define")
 
     def test_relative_links_and_example_files_exist(self) -> None:
@@ -124,6 +128,21 @@ class ReadmeStructureTests(unittest.TestCase):
         skipped = [c for c in python_blocks(self.readme) if not_runnable_reason(c)]
         # Hugging Face download, OpenAI/Anthropic, calibration: nothing else may hide here.
         self.assertEqual(len(skipped), 3)
+
+    def test_benchmark_image_is_embedded_with_descriptive_alt_text(self) -> None:
+        image = re.search(r"!\[([^\]]{40,})\]\((docs/assets/[\w.-]+\.png)\)", self.readme)
+        self.assertIsNotNone(image, "the benchmark image needs descriptive alt text")
+        assert image is not None
+        png = (ROOT / image.group(2)).read_bytes()
+        self.assertEqual(png[:8], b"\x89PNG\r\n\x1a\n")
+        width, height = struct.unpack(">II", png[16:24])
+        self.assertGreaterEqual((width, height), (1600, 900))
+        for claim in (
+            "**Highest average:**",
+            "**Ahead on five benchmarks:**",
+            "**Behind on two:**",
+        ):
+            self.assertIn(claim, self.readme)
 
     def test_first_example_is_the_short_first_run(self) -> None:
         first = python_blocks(self.readme)[0]
