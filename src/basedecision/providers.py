@@ -3,7 +3,9 @@ from dataclasses import asdict, dataclass
 import json
 import math
 import os
+import re
 
+from ._wire import anthropic_text, openai_text, to_plain, usage_counts
 from .client import BaseDecision
 from .errors import ProviderError, ProviderResponseError
 from .types import InputError, Request
@@ -77,7 +79,8 @@ class ProviderDecision:
     predict_iter = BaseDecision.predict_iter
 
     def __init__(self, provider, model, *, api_key=None, timeout=60.0,
-                 max_retries=2, max_output_tokens=1024, max_input_bytes=1_000_000):
+                 max_retries=2, max_output_tokens=1024, max_input_bytes=1_000_000,
+                 reasoning_effort=None):
         if provider not in ('openai', 'anthropic'):
             raise InputError('provider must be openai or anthropic')
         if not isinstance(model, str) or not model.strip():
@@ -87,11 +90,17 @@ class ProviderDecision:
         for key, value, minimum, maximum in [('max_retries',max_retries,0,5),('max_output_tokens',max_output_tokens,128,16384),('max_input_bytes',max_input_bytes,1,4_000_000)]:
             if type(value) is not int or not minimum <= value <= maximum:
                 raise InputError(f'{key} must be an integer in [{minimum}, {maximum}]')
+        if reasoning_effort is not None:
+            if provider != 'openai':
+                raise InputError('reasoning_effort is only supported for provider openai')
+            if not isinstance(reasoning_effort, str) or not re.fullmatch(r'[a-z][a-z0-9_-]{0,31}', reasoning_effort):
+                raise InputError('reasoning_effort must be a lowercase identifier such as "low"')
         key = api_key if api_key is not None else os.environ.get('OPENAI_API_KEY' if provider == 'openai' else 'ANTHROPIC_API_KEY')
         if not isinstance(key, str) or not key.strip():
             raise InputError('Set the provider API key in its environment variable or api_key argument')
         self.provider, self.model_id = provider, model
         self.max_output_tokens, self.max_input_bytes = max_output_tokens, max_input_bytes
+        self.reasoning_effort = reasoning_effort
         try:
             if provider == 'openai':
                 from openai import OpenAI
@@ -119,9 +128,10 @@ class ProviderDecision:
         schema = dict(type='object',properties={'option_index':dict(type='integer',enum=list(range(len(request.options))))},required=['option_index'],additionalProperties=False)
         try:
             if self.provider == 'openai':
+                options = {} if self.reasoning_effort is None else {'reasoning': {'effort': self.reasoning_effort}}
                 response = self._client.responses.create(model=self.model_id,instructions=SYSTEM,input=payload,
                     store=False,max_output_tokens=self.max_output_tokens,
-                    text={'format':dict(type='json_schema',name='decision',strict=True,schema=schema)})
+                    text={'format':dict(type='json_schema',name='decision',strict=True,schema=schema)},**options)
             else:
                 response = self._client.messages.create(model=self.model_id,system=SYSTEM,
                     messages=[dict(role='user',content=payload)],max_tokens=self.max_output_tokens,
@@ -130,26 +140,12 @@ class ProviderDecision:
             # Never propagate upstream messages, bodies, credentials or request text.
             error = _safe_error(exc)
             raise error from None
-        if self.provider == 'openai':
-            if any(getattr(c,'type',None)=='refusal' for o in getattr(response,'output',[]) for c in getattr(o,'content',[])):
-                raise ProviderResponseError('refusal')
-            if getattr(response,'status',None) != 'completed':
-                raise ProviderResponseError('incomplete_output')
-            text = getattr(response,'output_text',None)
-        else:
-            reason = getattr(response,'stop_reason',None)
-            if reason == 'refusal':
-                raise ProviderResponseError('refusal')
-            if reason != 'end_turn':
-                raise ProviderResponseError('incomplete_output')
-            blocks = getattr(response,'content',[])
-            if any(getattr(c,'type',None) != 'text' for c in blocks):
-                raise ProviderResponseError('unexpected_output_block')
-            text = ''.join(c.text for c in blocks)
+        # Normalize first, then apply the closed policy in _wire (total: only ProviderResponseError).
+        wire = to_plain(response)
+        text = openai_text(wire) if self.provider == 'openai' else anthropic_text(wire)
         index = parse_selection(text,len(request.options))
         option = request.options[index]
-        usage_obj = getattr(response,'usage',None)
-        usage = {k:v for k in ('input_tokens','output_tokens') if type(v:=getattr(usage_obj,k,None)) is int and v>=0}
+        usage = usage_counts(wire)
         return ProviderResult(answer=(option.id=='true') if request.kind=='noul' else option.id,
             option_id=option.id,label=option.text,kind=request.kind,model_id=self.model_id,provider=self.provider,
             usage=usage,selected_value=request.values[index] if request.values is not None else None)
