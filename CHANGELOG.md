@@ -14,6 +14,17 @@
 
 ## Changed
 
+- Typing and documentation. The whole package is now typed: `mypy --strict` passes (configuration in
+  `pyproject.toml`, run `mypy`), including on machines where Torch, Transformers and the provider SDKs are
+  not installed, and every public class, function and method has a docstring. `tests/test_api_quality.py`
+  enforces both. For users of the typed API: `load()` / `load_from_hub()` return the precise type
+  (`BaseDecision`, `CPUFastDecision` for `backend='cpu_fast'`, `CalibratedDecision` when a profile is
+  given), `Request.kind` / `Result.kind` are the literal `choice | noul | score`, `calibration_profiles()`
+  returns `ProfileInfo` dictionaries, and the convenience methods return the right result type on the
+  local model and on the cloud backend. Runtime behaviour is unchanged. The four pinned modules differ from
+  the previous commit only in annotations, docstrings and typing imports (checked by comparing their syntax
+  trees with those removed), 120 real-model predictions remain bit-identical to the original baseline, and
+  the `sdk_contract` hashes were refreshed.
 - `cpu_fast` no longer requires exactly torch 2.9.1 and transformers 4.57.6 (which forced a specific, and
   security-advisory-laden, install). It accepts torch >= 2.6 with transformers 4.48-4.57 and verifies itself
   on the installed versions at load time with a short known-answer self-test (strict in FP32: a correct

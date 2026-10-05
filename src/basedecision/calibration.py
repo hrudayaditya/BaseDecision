@@ -1,18 +1,42 @@
 """Reviewed local calibration profiles; explicit opt-in, with no refitting at inference."""
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass, asdict
 import hashlib
 import json
 import math
 from pathlib import Path
-from .types import InputError, Request, Result, options_from
+from typing import Any, NoReturn, TypedDict
+from .client import BaseDecision
+from .types import InputError, Option, Request, Result, options_from
 
 class CalibrationError(InputError):
     """Unsupported scope, incompatible inference contract, or invalid calibration input."""
 
 @dataclass(frozen=True)
 class CalibratedResult(Result):
-    raw_probabilities: dict | None = None
-    calibration: dict | None = None
+    """A :class:`~basedecision.Result` whose ``probabilities`` were post-hoc calibrated.
+
+    The selected answer, ``raw_logits`` and every other field are those of the raw result.
+
+    Attributes:
+        raw_probabilities: The uncalibrated softmax the calibrated ``probabilities`` came from.
+        calibration: Which profile was applied: ``profile``, ``temperature``,
+            ``artifact_sha256`` and a ``note`` on its limits.
+    """
+
+    raw_probabilities: dict[str, float] | None = None
+    calibration: dict[str, Any] | None = None
+
+class ProfileInfo(TypedDict):
+    """Coverage and limits of one calibration profile, as returned by :func:`calibration_profiles`."""
+
+    available: bool
+    method: str
+    temperature: float
+    kind: str
+    option_range: list[int]
+    packed_token_range: list[int]
+    note: str
 
 _DATA = Path(__file__).parent / 'data/calibration_v1.json'
 _WARNINGS = {
@@ -22,7 +46,7 @@ _WARNINGS = {
     'vast': 'Near-identity temperature; raw output remains the recommended default.',
 }
 
-def _read(path):
+def _read(path: str | Path) -> dict[str, Any]:
     try:
         data=json.loads(Path(path).read_text())
     except (OSError, ValueError) as exc:
@@ -31,22 +55,28 @@ def _read(path):
         raise CalibrationError('Unsupported calibration artifact schema')
     return data
 
-def calibration_profiles():
-    """Return packaged profile coverage and release limitations. No model load required."""
+def calibration_profiles() -> dict[str, ProfileInfo]:
+    """Return packaged profile coverage and release limitations. No model load required.
+
+    Returns:
+        One :class:`ProfileInfo` per profile name: whether it passed assessment (``available``),
+        its temperature, the option-count and packed-token ranges it was assessed on, and a note.
+        Profiles apply only to the workload they were assessed on (see ``docs/CALIBRATION.md``).
+    """
     data=_read(_DATA)
-    return {name: dict(available=spec['assessment_acceptable'],method=spec['method'],
+    return {name: ProfileInfo(available=spec['assessment_acceptable'],method=spec['method'],
         temperature=math.exp(spec['theta'][0]),kind='choice',
         option_range=[spec['min_options'],spec['max_options']],
         packed_token_range=[spec['min_tokens'],spec['max_tokens']],
         note=_WARNINGS[name]) for name,spec in data['scopes'].items()}
 
-def _sha(path):
+def _sha(path: str | Path) -> str:
     h=hashlib.sha256()
     with Path(path).open('rb') as f:
         for b in iter(lambda:f.read(1024*1024),b''): h.update(b)
     return h.hexdigest()
 
-def _verify(model,data):
+def _verify(model: BaseDecision,data: dict[str, Any]) -> None:
     # The hashes of the four inference modules are the compatibility contract, rather than a
     # cosmetic version string. Changing a module means refreshing them after an equivalence check
     # (see CONTRIBUTING.md).
@@ -71,8 +101,32 @@ class CalibratedDecision:
 
     No automatic workload detection. Raw model stays available to the caller.
     The wrapper does not own or close the underlying model.
+
+    Only ``choice`` questions are supported (``check`` and ``score`` raise
+    :class:`CalibrationError`; use the raw model for those), and only requests inside the profile's
+    assessed option and token ranges. It works with the CUDA/BF16 configuration the profiles were
+    assessed on.
+
+    Attributes:
+        model_id: Path of the wrapped checkpoint.
+        profile: Name of the calibration profile.
+        temperature: The profile's softmax temperature.
     """
-    def __init__(self, model, *, profile, artifact=None):
+
+    def __init__(self, model: BaseDecision, *, profile: str, artifact: str | Path | None=None) -> None:
+        """Verify that ``model`` matches the assessed configuration and bind the profile.
+
+        Args:
+            model: A local model loaded with :func:`~basedecision.load`.
+            profile: A profile name from :func:`calibration_profiles`.
+            artifact: Path of a caller-supplied scalar calibration artifact (JSON) to use instead
+                of the packaged one. This is a claim by the caller, not an official endorsement.
+
+        Raises:
+            CalibrationError: Unknown, unavailable or invalid profile; the model is not local, is
+                not on the assessed device/precision, or its checkpoint or the SDK differs from the
+                one the profile was fitted on.
+        """
         data=_read(_DATA if artifact is None else artifact)
         spec=data['scopes'].get(profile)
         if spec is None:raise CalibrationError('Unknown calibration profile; inspect calibration_profiles()')
@@ -89,14 +143,19 @@ class CalibratedDecision:
         self._model=model;self.model_id=model.model_id;self.profile=profile;self._spec=dict(spec)
         self.temperature=math.exp(theta[0]);self._artifact_sha=_sha(_DATA if artifact is None else artifact)
 
-    def _coverage(self,kind,options,tokens):
+    def _coverage(self,kind: str,options: int,tokens: int) -> None:
         if kind!='choice':raise CalibrationError('Profile covers choice only; use the raw model for noul or score')
         s=self._spec
         if not s['min_options']<=options<=s['max_options'] or not s['min_tokens']<=tokens<=s['max_tokens']:
             raise CalibrationError('Request outside assessed option/token range; use raw output or a representative calibration set')
 
-    def apply(self,result):
-        """Apply once to a raw result from the bound model. Preserve the selected answer."""
+    def apply(self,result: Result) -> CalibratedResult:
+        """Apply once to a raw result from the bound model. Preserve the selected answer.
+
+        Raises:
+            CalibrationError: The result is from another model, is already calibrated, is not a
+                ``choice`` result or is outside the profile's assessed ranges.
+        """
         if not isinstance(result,Result) or result.model_id!=self.model_id:raise CalibrationError('Result belongs to another model/backend')
         if result.calibration_status!='raw_softmax_uncalibrated':raise CalibrationError('Expected raw output; cannot calibrate twice')
         ids=list(result.raw_logits);z=list(result.raw_logits.values())
@@ -111,12 +170,39 @@ class CalibratedDecision:
             profile=self.profile,temperature=self.temperature,artifact_sha256=self._artifact_sha,
             note=_WARNINGS.get(self.profile,'Caller-supplied calibration artifact; validate workload coverage.')))
 
-    def count_tokens(self,request):return self._model.count_tokens(request)
-    def predict(self,request):return self.predict_batch([request])[0]
-    def choose(self,*,context,question,options):return self.predict(Request(context,question,options_from(options)))
-    def check(self,**kwargs):raise CalibrationError('No reviewed noul profile; call the raw model.check()')
-    def score(self,**kwargs):raise CalibrationError('No reviewed score profile; call the raw model.score()')
-    def predict_batch(self,requests):
+    def count_tokens(self,request: Request) -> int:
+        """Exact packed token count of ``request`` (see :meth:`BaseDecision.count_tokens`)."""
+        return self._model.count_tokens(request)
+    def predict(self,request: Request) -> CalibratedResult:
+        """Answer one ``choice`` request with calibrated probabilities."""
+        return self.predict_batch([request])[0]
+    def choose(self,*,context: str,question: str,options: Sequence[str | Option]) -> CalibratedResult:
+        """Pick one of ``options``; like :meth:`BaseDecision.choose`, with calibrated probabilities."""
+        return self.predict(Request(context,question,options_from(options)))
+    def check(self,**kwargs: Any) -> NoReturn:
+        """Not available: no reviewed profile exists for yes/no questions.
+
+        Raises:
+            CalibrationError: Always; call ``check`` on the raw model.
+        """
+        raise CalibrationError('No reviewed noul profile; call the raw model.check()')
+    def score(self,**kwargs: Any) -> NoReturn:
+        """Not available: no reviewed profile exists for score questions.
+
+        Raises:
+            CalibrationError: Always; call ``score`` on the raw model.
+        """
+        raise CalibrationError('No reviewed score profile; call the raw model.score()')
+    def predict_batch(self,requests: Iterable[Request]) -> list[CalibratedResult]:
+        """Answer ``choice`` requests in input order with calibrated probabilities.
+
+        Every request's scope and packing is validated before any inference runs.
+
+        Raises:
+            InputError: ``requests`` holds something other than ``Request`` objects.
+            CalibrationError: A request is not a ``choice`` question or is outside the profile's
+                assessed option/token ranges.
+        """
         if isinstance(requests,(str,bytes)):raise InputError('requests must contain Request objects')
         requests=list(requests)
         # Validate every item's scope and full packing before invoking inference.
@@ -124,9 +210,10 @@ class CalibratedDecision:
             if not isinstance(r,Request):raise InputError('requests must contain Request objects')
             self._coverage(r.kind,len(r.options),self._model.count_tokens(r))
         return [self.apply(r) for r in self._model.predict_batch(requests)]
-    def predict_iter(self,requests,*,buffer_size=64):
+    def predict_iter(self,requests: Iterable[Request],*,buffer_size: int=64) -> Iterator[CalibratedResult]:
+        """Lazily yield calibrated results, ``buffer_size`` requests at a time (bounded memory)."""
         if type(buffer_size) is not int or buffer_size<1:raise InputError('buffer_size must be a positive integer')
-        buffer=[]
+        buffer: list[Request]=[]
         for r in requests:
             buffer.append(r)
             if len(buffer)==buffer_size:yield from self.predict_batch(buffer);buffer=[]

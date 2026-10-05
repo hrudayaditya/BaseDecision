@@ -56,8 +56,7 @@ class ProviderResponseError(ProviderError):
 def _restore_context_length_error(
     required: int, maximum: int, at_least: bool = False
 ) -> ContextLengthError:
-    # types.py is a pinned legacy module without annotations, hence the ignore.
-    return ContextLengthError(required, maximum, at_least)  # type: ignore[no-untyped-call]
+    return ContextLengthError(required, maximum, at_least)
 
 
 def _reduce_context_length_error(error: ContextLengthError) -> tuple[Any, ...]:

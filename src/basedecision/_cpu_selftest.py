@@ -256,8 +256,8 @@ def _compare(config: _EncoderConfig, torch: ModuleType) -> float:
         return captured, logits
 
     reference = {mode: run(mode) for mode in (False, True)}
-    counters = install(model)  # type: ignore[no-untyped-call]  # instance-local: this model only
-    install_head(model)  # type: ignore[no-untyped-call]
+    counters = install(model)  # instance-local: this model only
+    install_head(model)
     fast = {mode: run(mode) for mode in (False, True)}
 
     for mode in (False, True):
