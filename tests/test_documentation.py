@@ -29,6 +29,9 @@ import basedecision
 ROOT = Path(__file__).resolve().parents[1]
 MODEL = os.environ.get("BASEDECISION_TEST_MODEL", "")
 PACKAGE_PARENT = str(Path(basedecision.__file__).resolve().parents[1])
+REPO_URL = "https://github.com/hrudayaditya/BaseDecision"
+BLOB_URL = f"{REPO_URL}/blob/main/"  # where PyPI readers land when they follow a README link
+RAW_URL = "https://raw.githubusercontent.com/hrudayaditya/BaseDecision/main/"  # README images
 
 # (file, heading whose first ```python block is executed, name of the variable it must define)
 SNIPPETS = [("docs/SYSTEMONE.md", None, "response")]
@@ -100,11 +103,18 @@ class ReadmeStructureTests(unittest.TestCase):
         self.assertIn('pip install "basedecision[runtime]"', self.readme)  # the PyPI form leads
         self.assertLessEqual(named, set(extras), "install extra that pyproject does not define")
 
-    def test_relative_links_and_example_files_exist(self) -> None:
-        links = re.findall(r"\]\((?!https?://|#)([^)#\s]+)", self.readme)
+    def test_links_are_absolute_for_pypi_and_point_at_files_that_exist(self) -> None:
+        targets = re.findall(r"\]\(([^)\s]+)\)", self.readme)
+        relative = [t for t in targets if not t.startswith(("http://", "https://", "#", "mailto:"))]
+        self.assertEqual(relative, [], "relative links and images break on PyPI; use absolute URLs")
+        repo_files = [
+            t.removeprefix(BLOB_URL).removeprefix(RAW_URL).split("#")[0]
+            for t in targets
+            if t.startswith((BLOB_URL, RAW_URL))
+        ]
         scripts = re.findall(r"examples/[\w.]+\.py", self.readme)
-        self.assertTrue(links and scripts)
-        for target in {*links, *scripts}:
+        self.assertTrue(repo_files and scripts)
+        for target in {*repo_files, *scripts}:
             with self.subTest(target=target):
                 self.assertTrue((ROOT / target).exists(), f"README points to missing {target}")
 
@@ -130,7 +140,8 @@ class ReadmeStructureTests(unittest.TestCase):
         self.assertEqual(len(skipped), 3)
 
     def test_benchmark_image_is_embedded_with_descriptive_alt_text(self) -> None:
-        image = re.search(r"!\[([^\]]{40,})\]\((docs/assets/[\w.-]+\.png)\)", self.readme)
+        pattern = r"!\[([^\]]{40,})\]\(" + re.escape(RAW_URL) + r"(docs/assets/[\w.-]+\.png)\)"
+        image = re.search(pattern, self.readme)
         self.assertIsNotNone(image, "the benchmark image needs descriptive alt text")
         assert image is not None
         png = (ROOT / image.group(2)).read_bytes()
@@ -143,6 +154,9 @@ class ReadmeStructureTests(unittest.TestCase):
             "**Behind on two:**",
         ):
             self.assertIn(claim, self.readme)
+        for baseline in ("GLiNER 2.5 base", "GLiNER2.5-Decide", "Decision 1.0 Kai 0.6B", "Laya"):
+            self.assertIn(baseline, self.readme)  # the models the image compares against
+        self.assertNotIn("…", self.readme, "a truncated placeholder name is left in the README")
 
     def test_first_example_is_the_short_first_run(self) -> None:
         first = python_blocks(self.readme)[0]

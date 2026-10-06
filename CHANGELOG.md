@@ -1,4 +1,4 @@
-# Unreleased
+# 0.1.0 (2026-10-05)
 
 - Jev/SystemOne API support: `SystemOne` / `basedecision.systemone.systemone` answer `POST /v1/systemone`
   request bodies (choice, score and noul questions) with local models; strict validation, stable error
@@ -14,6 +14,22 @@
 
 ## Changed
 
+- First stable release, 0.1.0 (the earlier versions were release candidates that were never published). The
+  README no longer carries the release-candidate notice, and the error for an unsupported device says "Only
+  CPU and CUDA devices are supported" instead of "This release candidate supports CPU and CUDA" (the only
+  executable change to `client.py` in this release step; the `sdk_contract` hash was refreshed). The OpenAI
+  and Anthropic backends have still only been tested against mock servers, as `docs/CLOUD.md` states.
+- The network's module header no longer describes it as an excerpt of another project, and no packaging file
+  refers to the third-party-notices file that does not exist, so building the wheel and the sdist prints no
+  missing-file warnings. Docstring-only change to a hash-pinned module: its syntax tree is identical, 120
+  real-model predictions remain bit-identical to the original baseline, and the `sdk_contract` hash was
+  refreshed. (`_cpu_attention.py` still credits the Transformers code it was adapted from.)
+- Package metadata for PyPI: the license is the SPDX expression `Apache-2.0` (instead of the license text
+  pasted into the `License` field; needs setuptools 77 or newer to build), `[project.urls]` (homepage, source,
+  issues, documentation, changelog), classifiers for Python 3.10 to 3.14 and typed code, and keywords. Every
+  link and image in the README is now an absolute URL, because PyPI cannot resolve relative ones; a test
+  forbids relative links and checks that each absolute link points at a file that exists. New tests check the
+  metadata and that the version in `pyproject.toml` equals `basedecision.__version__`.
 - The README now installs from PyPI (`pip install "basedecision[runtime]"`, `[runtime,hub]`, `[providers]`;
   `pip install --no-deps basedecision` to leave an existing Torch alone) and says "from a clone" where a step
   needs the repository (`examples/`, the tests, `pip install ".[runtime]"`). The link to `MODEL_CARD.md` is
@@ -21,8 +37,7 @@
   README has a License section.
 - The README gains a "How it performs" section: the benchmark image (`docs/assets/benchmarks.png`, with a
   descriptive alt text) and a short write-up (highest average, ahead on five of eight benchmarks, behind
-  on two, one tie). The two baseline names that were cut off in the source figure are still placeholders
-  (`GLiNER2.5-Decid…`, `Decision 1.0 Kai…`) and must be filled in before the README is published.
+  on two, one tie), compared with GLiNER 2.5 base, GLiNER2.5-Decide, Decision 1.0 Kai 0.6B and Laya.
 - Typing and documentation. The whole package is now typed: `mypy --strict` passes (configuration in
   `pyproject.toml`, run `mypy`), including on machines where Torch, Transformers and the provider SDKs are
   not installed, and every public class, function and method has a docstring. `tests/test_api_quality.py`
