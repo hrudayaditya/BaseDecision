@@ -33,8 +33,8 @@ print(result.answer)          # Refund
 print(result.probabilities)   # Refund is about 0.99999, the other two about 0.000002
 ```
 
-Loading takes about 8 s and ~2 GiB of RAM; each answer takes about 0.05 s on a laptop CPU for short
-texts. No flags are needed.
+Loading takes 5 to 25 seconds, depending on your PyTorch version, and ~2 GiB of RAM; each answer takes
+about 0.05 s on a laptop CPU for short texts. No flags are needed.
 
 ## How it performs
 
@@ -168,7 +168,9 @@ except CPUFastUnavailable:                  # unsupported Torch/Transformers: no
     model = load('/path/to/model')          # the normal CPU path
 ```
 
-Opt-in and experimental: it checks itself at load time and never falls back silently. It was
+Opt-in and experimental: it checks itself at load time and never falls back silently. It needs
+Transformers 4.48 to 4.57, and a fresh `pip install basedecision` brings Transformers 5, where it
+politely refuses and the fallback above takes over (`pip install "transformers<5"` to try it). It was
 developed on an Intel Xeon server and was 10-15x *slower* than the default on an Apple-silicon laptop,
 so measure before you use it. See [CPU support and limitations](https://github.com/hrudayaditya/BaseDecision/blob/main/docs/CPU.md).
 

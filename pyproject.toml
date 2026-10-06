@@ -29,7 +29,7 @@ classifiers = [
 ]
 dependencies = [
     "torch>=2.6,<3",
-    "transformers>=4.48,<5",
+    "transformers>=4.48,<6",
     "safetensors>=0.4",
     "tokenizers>=0.21",
     "huggingface-hub>=0.34,<2",

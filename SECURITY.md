@@ -10,6 +10,11 @@ request limits, concurrency/queue limits and authorization for downstream action
   and `trust_remote_code=False`. Only the supported ModernBERT architecture loads.
 - Hub downloads require an explicit `from_hub` call. Python and pickle checkpoint
   files are excluded; no downloaded Python is executed. Use trusted repositories.
+- A checkpoint folder's `config.json` and tokenizer files are parsed by Transformers, so load only
+  checkpoints you trust. Transformers 4.x has published advisories (for example CVE-2026-4372, a
+  malicious `config.json`) that are fixed in 5.x, which is why the package allows Transformers 5 and a
+  fresh install uses it; the Transformers features those advisories concern (`Trainer`, checkpoint
+  conversion, `save_pretrained`, remote code) are not used by this package.
 - Provider use is explicit. Full request context and option text are sent to the
   selected provider. No automatic local-to-cloud fallback exists.
 - Provider SDKs use explicit official HTTPS endpoints, finite request timeouts,
