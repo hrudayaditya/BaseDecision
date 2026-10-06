@@ -1,3 +1,21 @@
+# 0.1.1 (2026-10-05)
+
+## Changed
+
+- `pip install basedecision` now installs everything the README uses: PyTorch, Transformers, safetensors,
+  tokenizers, `huggingface-hub` and the OpenAI and Anthropic SDKs. 0.1.0 installed only a dependency-free core
+  and needed `pip install "basedecision[runtime]"` for the local model. The `runtime`, `hub`, `providers`,
+  `openai` and `anthropic` extras remain as empty aliases, so every command printed by 0.1.0 and by the error
+  messages still works. For a lean environment, `pip install --no-deps basedecision` installs the core alone
+  and the error messages name what is missing. A new test fails if the package imports a third-party library
+  that is not declared as a dependency.
+- Transformers 5 is allowed (`transformers>=4.48,<6`), so a fresh install gets it and its security fixes
+  instead of a 4.x release with published advisories. The whole suite passes against the real checkpoint on
+  Transformers 5.18 with identical answers and the same speed. `cpu_fast` supports Transformers 4.48 to 4.57
+  only: on a fresh install it refuses cleanly, and `pip install "transformers<5"` enables it. Model loading
+  takes 5 to 25 seconds depending on the PyTorch version (random weight initialisation, about 19 s on
+  PyTorch 2.14, is the slow part), which the README now says; making it faster is planned.
+
 # 0.1.0 (2026-10-05)
 
 - Jev/SystemOne API support: `SystemOne` / `basedecision.systemone.systemone` answer `POST /v1/systemone`
