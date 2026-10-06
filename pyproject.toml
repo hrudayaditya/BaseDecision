@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "basedecision"
-version = "0.1.0"
+version = "0.1.1"
 description = "Native typed decisions with complete-input packing and bounded batching"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -27,7 +27,15 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Typing :: Typed",
 ]
-dependencies = []
+dependencies = [
+    "torch>=2.6,<3",
+    "transformers>=4.48,<5",
+    "safetensors>=0.4",
+    "tokenizers>=0.21",
+    "huggingface-hub>=0.34,<2",
+    "openai>=2.54,<3",
+    "anthropic>=0.125,<1",
+]
 
 [project.urls]
 Homepage = "https://github.com/hrudayaditya/BaseDecision"
@@ -36,12 +44,14 @@ Source = "https://github.com/hrudayaditya/BaseDecision"
 Issues = "https://github.com/hrudayaditya/BaseDecision/issues"
 Changelog = "https://github.com/hrudayaditya/BaseDecision/blob/main/CHANGELOG.md"
 
+# Everything is installed by default now. These extras stay as empty aliases so that the commands printed by
+# 0.1.0 and by the error messages (`pip install "basedecision[runtime]"`) keep working.
 [project.optional-dependencies]
-openai = ["openai>=2.54,<3"]
-anthropic = ["anthropic>=0.125,<1"]
-hub = ["huggingface-hub>=0.34,<2"]
-providers = ["openai>=2.54,<3", "anthropic>=0.125,<1"]
-runtime = ["torch>=2.6,<3", "transformers>=4.48,<5", "safetensors>=0.4", "tokenizers>=0.21"]
+runtime = []
+hub = []
+providers = []
+openai = []
+anthropic = []
 
 # Run `mypy` from the repository root. Torch, Transformers and the provider SDKs are optional
 # dependencies, so the check must also pass where they are not installed.

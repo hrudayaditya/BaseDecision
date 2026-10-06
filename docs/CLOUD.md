@@ -12,7 +12,8 @@ with BaseDecision.from_provider('anthropic', 'YOUR_ANTHROPIC_MODEL_ID') as clien
     result = client.check(context='The account is active.', question='Is the account active?')
 ```
 
-Install with `pip install ".[providers]"` (or `.[openai]` / `.[anthropic]`); no Torch is needed. Set
+Both SDKs come with `pip install basedecision`. For a cloud-only environment without PyTorch, install the
+lean core and the SDKs yourself: `pip install --no-deps basedecision`, then `pip install openai anthropic`. Set
 `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` using your shell's secure secret setup. Do not put
 credentials in source files or chat. Choose a model that supports the provider's structured JSON
 output API.

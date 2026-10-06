@@ -5,7 +5,9 @@
 
 from __future__ import annotations
 
+import ast
 import re
+import sys
 import unittest
 from pathlib import Path
 
@@ -56,6 +58,53 @@ class PackageMetadataTests(unittest.TestCase):
         ):
             self.assertIn(f'"{expected}"', self.project)
         self.assertNotIn('Aditya"', self.project)  # the old short author name
+
+    def test_a_plain_install_brings_everything_the_readme_uses(self) -> None:
+        listed = re.search(r"(?ms)^dependencies = \[(.*?)^\]", self.project)
+        self.assertIsNotNone(listed)
+        assert listed is not None
+        declared = set(re.findall(r'"([A-Za-z0-9_.-]+)', listed.group(1)))
+        for name in (
+            "torch",
+            "transformers",
+            "safetensors",
+            "tokenizers",
+            "huggingface-hub",
+            "openai",
+            "anthropic",
+        ):
+            self.assertIn(name, declared)
+
+    def test_old_install_commands_still_work_through_alias_extras(self) -> None:
+        extras = section(self.pyproject, "project.optional-dependencies")
+        for name in (
+            "runtime",
+            "hub",
+            "providers",
+            "openai",
+            "anthropic",
+        ):  # printed by 0.1.0 and by error messages
+            self.assertRegex(extras, rf"(?m)^{name} = \[\]$")
+
+    def test_every_third_party_import_is_a_declared_dependency(self) -> None:
+        listed = re.search(r"(?ms)^dependencies = \[(.*?)^\]", self.project)
+        assert listed is not None
+        declared = {
+            n.lower().replace("-", "_") for n in re.findall(r'"([A-Za-z0-9_.-]+)', listed.group(1))
+        }
+        imported: set[str] = set()
+        for path in (ROOT / "src" / "basedecision").glob("*.py"):
+            for node in ast.walk(ast.parse(path.read_text())):
+                if isinstance(node, ast.Import):
+                    imported.update(alias.name.split(".")[0] for alias in node.names)
+                elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                    imported.add(node.module.split(".")[0])
+        third_party = {
+            m for m in imported if m not in sys.stdlib_module_names and m != "basedecision"
+        }
+        self.assertEqual(
+            sorted(third_party - declared), [], "imported but not declared in dependencies"
+        )
 
     def test_authors_are_not_the_old_placeholder(self) -> None:
         self.assertIn('authors = [{name = "Hrudayaditya Jallu"}]', self.project)

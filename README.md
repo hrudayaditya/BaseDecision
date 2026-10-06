@@ -8,21 +8,17 @@ it never writes text, it chooses among the answers you give it.
 ## Install
 
 ```bash
-pip install "basedecision[runtime]"    # needs Python 3.10+
+pip install basedecision    # needs Python 3.10+
 ```
 
-That is all for local use (the first-time download of Torch is large).
+That is all. It installs everything the examples below use, including PyTorch, so the first download is
+large. An NVIDIA GPU is used automatically; Apple-silicon Macs run the model on the CPU.
 
-| I want to... | Install |
-|---|---|
-| Run the model on my machine (CPU or NVIDIA GPU; Apple-silicon Macs use the CPU) | `pip install "basedecision[runtime]"` |
-| ...and download the model from Hugging Face | `pip install "basedecision[runtime,hub]"` |
-| Use OpenAI or Anthropic only, no Torch | `pip install "basedecision[providers]"` |
-
-Already have Torch 2.6+ and Transformers 4.48-4.57 and want pip to leave them alone?
-`pip install --no-deps basedecision` installs only BaseDecision. Nothing is ever installed behind your
-back: a missing package gives an error that says which extra to install. Working from a clone of the
-repository instead? Run `pip install ".[runtime]"` inside it.
+Already manage your own PyTorch and Transformers, or want a lean environment? Run
+`pip install --no-deps basedecision` and add only what you use: `torch`, `transformers`, `safetensors` and
+`tokenizers` for the local model, `huggingface-hub` for `load_from_hub`, `openai` and `anthropic` for the
+cloud backends. A missing package gives an error that says what to install. Working from a clone of the
+repository instead? Run `pip install .` inside it.
 
 ## Try it
 
@@ -131,7 +127,7 @@ print(model.choose(context='Please refund my purchase.', question='What is reque
 
 ### Download the model from Hugging Face: `load_from_hub`
 
-Needs `pip install "basedecision[runtime,hub]"`. The repository name is a placeholder until the model is published.
+The repository name is a placeholder until the model is published.
 
 ```python
 from basedecision import load_from_hub
@@ -179,7 +175,7 @@ so measure before you use it. See [CPU support and limitations](https://github.c
 ### OpenAI or Anthropic instead of the local model
 
 ```bash
-export OPENAI_API_KEY=...     # or ANTHROPIC_API_KEY; needs: pip install "basedecision[providers]"
+export OPENAI_API_KEY=...     # or ANTHROPIC_API_KEY
 ```
 
 ```python

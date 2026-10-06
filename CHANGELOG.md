@@ -1,3 +1,15 @@
+# 0.1.1 (2026-10-05)
+
+## Changed
+
+- `pip install basedecision` now installs everything the README uses: PyTorch, Transformers, safetensors,
+  tokenizers, `huggingface-hub` and the OpenAI and Anthropic SDKs. 0.1.0 installed only a dependency-free core
+  and needed `pip install "basedecision[runtime]"` for the local model. The `runtime`, `hub`, `providers`,
+  `openai` and `anthropic` extras remain as empty aliases, so every command printed by 0.1.0 and by the error
+  messages still works. For a lean environment, `pip install --no-deps basedecision` installs the core alone
+  and the error messages name what is missing. A new test fails if the package imports a third-party library
+  that is not declared as a dependency.
+
 # 0.1.0 (2026-10-05)
 
 - Jev/SystemOne API support: `SystemOne` / `basedecision.systemone.systemone` answer `POST /v1/systemone`

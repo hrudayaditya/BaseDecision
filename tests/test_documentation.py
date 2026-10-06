@@ -89,19 +89,13 @@ class ReadmeStructureTests(unittest.TestCase):
 
     readme = (ROOT / "README.md").read_text()
 
-    def test_install_commands_name_real_extras(self) -> None:
-        section = (ROOT / "pyproject.toml").read_text().split("[project.optional-dependencies]")[1]
-        extras = re.findall(r"^(\w+)\s*=", section.split("\n[", 1)[0], re.M)  # 3.10: no tomllib
-        named = {
-            extra.strip()
-            for group in re.findall(
-                r"pip install[^\n`]*?(?:\.|basedecision)\[([^\]]+)\]", self.readme
-            )
-            for extra in group.split(",")
-        }
-        self.assertTrue(named, "the README no longer shows an install command")
-        self.assertIn('pip install "basedecision[runtime]"', self.readme)  # the PyPI form leads
-        self.assertLessEqual(named, set(extras), "install extra that pyproject does not define")
+    def test_the_install_command_is_the_plain_one(self) -> None:
+        commands = re.findall(r"^\s*pip install ([^\n#]+)", self.readme, re.M)
+        self.assertEqual(
+            commands[0].strip(), "basedecision", "the first command must be the plain one"
+        )
+        self.assertNotRegex(self.readme, r"basedecision\[", "the README must not need extras")
+        self.assertIn("pip install --no-deps basedecision", self.readme)  # the documented lean path
 
     def test_links_are_absolute_for_pypi_and_point_at_files_that_exist(self) -> None:
         targets = re.findall(r"\]\(([^)\s]+)\)", self.readme)
