@@ -5,10 +5,6 @@ Pick one option, answer yes/no, or give a rating, for texts up to 8,192 tokens. 
 own laptop or GPU, with no API key, or through OpenAI/Anthropic. It is a classifier, not a chatbot:
 it never writes text, it chooses among the answers you give it.
 
-**Release candidate 0.1.0rc5.** Local inference matches RC2's 8,751-decision regression (identical
-logits and labels). The OpenAI/Anthropic backends are tested against mock servers only; live
-provider acceptance is pending.
-
 ## Install
 
 ```bash

@@ -141,7 +141,7 @@ class BaseDecision:
         for f in ('model.safetensors','rl_agent_config.json','encoder/config.json','tokenizer/tokenizer.json'):
             if not (path/f).is_file():raise FileNotFoundError(path/f)
         self._torch: Any=torch;self.device: torch.device=torch.device(device);self.precision=precision
-        if self.device.type not in ('cpu','cuda'):raise InputError('This release candidate supports CPU and CUDA')
+        if self.device.type not in ('cpu','cuda'):raise InputError('Only CPU and CUDA devices are supported')
         if self.device.type=='cuda':
             if not torch.cuda.is_available():raise RuntimeError('CUDA is unavailable')
             with torch.cuda.device(self.device):

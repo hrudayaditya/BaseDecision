@@ -1,4 +1,4 @@
-# Unreleased
+# 0.1.0 (2026-10-05)
 
 - Jev/SystemOne API support: `SystemOne` / `basedecision.systemone.systemone` answer `POST /v1/systemone`
   request bodies (choice, score and noul questions) with local models; strict validation, stable error
@@ -14,6 +14,11 @@
 
 ## Changed
 
+- First stable release, 0.1.0 (the earlier versions were release candidates that were never published). The
+  README no longer carries the release-candidate notice, and the error for an unsupported device says "Only
+  CPU and CUDA devices are supported" instead of "This release candidate supports CPU and CUDA" (the only
+  executable change to `client.py` in this release step; the `sdk_contract` hash was refreshed). The OpenAI
+  and Anthropic backends have still only been tested against mock servers, as `docs/CLOUD.md` states.
 - The network's module header no longer describes it as an excerpt of another project, and no packaging file
   refers to the third-party-notices file that does not exist, so building the wheel and the sdist prints no
   missing-file warnings. Docstring-only change to a hash-pinned module: its syntax tree is identical, 120
